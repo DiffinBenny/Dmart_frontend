@@ -4,15 +4,16 @@ import * as Yup from "yup";
 import styled from "styled-components";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import axios from "axios"; // Ensure axios is imported
-import { loginAPI } from "../services/userServices"; // Ensure this path is correct
+import axios from "axios";
+import { loginAPI } from "../services/userServices";
 import { loginUserAction } from "../redux/userSlice";
 import { jwtDecode } from "jwt-decode";
 import { useDispatch } from "react-redux";
 
 const Login = () => {
   const navigate = useNavigate();
-const dispatch=useDispatch()
+  const dispatch = useDispatch();
+
   // Mutation for logging in a user
   const { mutateAsync, isPending, isError, error } = useMutation({
     mutationFn: loginAPI,
@@ -38,13 +39,12 @@ const dispatch=useDispatch()
     validationSchema,
     onSubmit: async (values, { resetForm }) => {
       try {
-        console.log("Submitting form data:", values); // Log form data
+        console.log("Submitting form data:", values);
         const token = await mutateAsync(values);     
         if (token) {
             sessionStorage.setItem("userToken", token);
             const decodedData = jwtDecode(token);
             dispatch(loginUserAction(decodedData));
-            // setSuccessMessage("Login Successful!");
             resetForm();
             if(decodedData.role==="vendor"){
               navigate("/vendorhome")
@@ -58,9 +58,8 @@ const dispatch=useDispatch()
         } else {
             setSuccessMessage("Invalid response from server");
         }
-          
       } catch (error) {
-        console.error("Login Error:", error.response ? error.response.data : error.message); // Log detailed error
+        console.error("Login Error:", error.response ? error.response.data : error.message);
         alert("An error occurred during login. Please try again.");
       }
     },
@@ -127,24 +126,26 @@ const LoginWrapper = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-image: url("/src/assets/login2.jpg.webp"); // Add background image
+  background-image: url("/src/assets/A.jpg");
   background-size: cover;
   background-position: center;
 
   .login-container {
-    background: rgba(255, 255, 255, 0.77);
+    background: rgba(255, 255, 255, 0.2); // More transparent background
     padding: 2rem;
     border-radius: 1rem;
     backdrop-filter: blur(10px);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3); // Light border for definition
     max-width: 400px;
     width: 100%;
     text-align: center;
 
     h1 {
       font-size: 2rem;
-      color: hsl(var(--black));
+      color: white; // Changed to white for better contrast
       margin-bottom: 1.5rem;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     }
 
     .form-group {
@@ -155,19 +156,22 @@ const LoginWrapper = styled.div`
         display: block;
         margin-bottom: 0.5rem;
         font-size: 1rem;
-        color: hsl(var(--dark-grayish-blue));
+        color: white; // Changed to white
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
       }
 
       input {
         width: 100%;
         padding: 0.75rem;
-        border: 1px solid hsl(var(--divider));
+        background: rgba(255, 255, 255, 0.8); // Slightly opaque input fields
+        border: 1px solid rgba(255, 255, 255, 0.5);
         border-radius: 0.5rem;
         font-size: 1rem;
 
         &:focus {
           outline: none;
           border-color: hsl(var(--orange));
+          background: rgba(255, 255, 255, 0.9); // Slightly more opaque when focused
         }
       }
     }
@@ -182,26 +186,31 @@ const LoginWrapper = styled.div`
       font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.3s ease;
+      transition: all 0.3s ease;
+      margin-top: 1rem;
 
       &:hover {
-        opacity: 0.9;
+        background-color: hsl(var(--orange), 0.8);
+        transform: translateY(-1px);
       }
 
       &:disabled {
         background-color: hsl(var(--orange), 0.5);
         cursor: not-allowed;
+        transform: none;
       }
     }
 
     p {
       margin-top: 1rem;
       font-size: 1rem;
-      color: hsl(var(--dark-grayish-blue));
+      color: white; // Changed to white
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 
       a {
         color: hsl(var(--orange));
         text-decoration: none;
+        font-weight: 600;
 
         &:hover {
           text-decoration: underline;
@@ -212,10 +221,11 @@ const LoginWrapper = styled.div`
 `;
 
 const ErrorMessage = styled.p`
-  color: red;
+  color: #ffcccc; // Lighter red for better visibility
   font-size: 0.875rem;
   margin-bottom: 1rem;
   text-align: left;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 `;
 
 export default Login;

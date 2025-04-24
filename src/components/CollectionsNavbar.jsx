@@ -2,14 +2,16 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { Link, useNavigate } from "react-router-dom";
 import { Logo, Cart } from "../icons/index";
+import { FaBell } from 'react-icons/fa';
 import { avatar } from "../assets/imagedata";
 import FloatingCart from "./FloatingCart";
 import { useGlobalContext } from "../context/context";
 import { removeToken } from "../utils/storageHandler";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { viewAPI } from "../services/userServices";
+import { deleteAllNotificationsAPI, getNotificationsAPI, markNotificationsAsReadAPI } from "../services/notificationServices";
 
-// Define SearchForm before it's used in other styled components
+// Styled Components
 const SearchForm = styled.form`
   display: flex;
   align-items: center;
@@ -66,84 +68,160 @@ const SearchForm = styled.form`
   }
 `;
 
-const CollectionsNavbar = () => {
-  const { showCart, hideCart, state } = useGlobalContext();
-  const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
+const NotificationButton = styled.button`
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  font-size: 2rem;
+  color: #333;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  const { data: profileData } = useQuery({
-    queryKey: ['viewAPI'],
-    queryFn: viewAPI,
-    retry: 1
-  });
+  &:hover {
+    color: hsl(var(--orange));
+    transform: scale(1.05);
+  }
+`;
 
-  const handleUserLogoClick = () => {
-    navigate("/profile");
-  };
+const NotificationBadge = styled.span`
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #ff3f6c;
+  color: white;
+  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(25%, -25%);
+`;
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/collections/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
+const NotificationDropdown = styled.div`
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 20px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
+  width: 400px;
+  max-height: 480px;
+  overflow-y: auto;
+  z-index: 1000;
 
-  const handleLogout = () => {
-    removeToken();
-    navigate("/login");
-  };
+  &:before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 25px;
+    width: 12px;
+    height: 12px;
+    background: white;
+    transform: rotate(45deg);
+    border-left: 1px solid #e9e9e9;
+    border-top: 1px solid #e9e9e9;
+  }
 
-  return (
-    <CollectionsNavbarWrapper>
-      <nav>
-        <div className="nav-left">
-          <div className="logo">
-            <Logo />
-          </div>
-          <ul className="nav-links">
-            <li>
-              <Link to="/collections/collectionshome">Home</Link>
-            </li>
-            <li>
-              <Link to="/collections/fashion">Fashion</Link>
-            </li>
-            <li>
-              <Link to="/collections/accessories">Accessories</Link>
-            </li>
-            <li>
-              <Link to="/collections/beauty">Beauty</Link>
-            </li>
-            <li>
-              <Link to="/collections/order">Order</Link>
-            </li>
-            <li>
-              <Link to="/collections/wishlist">Wishlist</Link>
-            </li>
-          </ul>
-        </div>
-        
-       
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
 
-        <div className="nav-right">
-          <button
-            onClick={() => (state.showingCart ? hideCart() : showCart())}
-            className="cart-btn"
-          >
-            <Cart />
-            {state.totalCartSize > 0 && <span>{state.totalCartSize}</span>}
-          </button>
-          <button className="avatar-btn" onClick={handleUserLogoClick}>
-            <img src={profileData?.user?.profilePic || avatar} alt="avatar" />
-          </button>
-          <LogoutButton onClick={handleLogout}>
-            Logout
-          </LogoutButton>
-          <FloatingCart className={`${state.showingCart ? "active" : ""}`} />
-        </div>
-      </nav>
-    </CollectionsNavbarWrapper>
-  );
-};
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+  }
+`;
+
+const NotificationHeader = styled.div`
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9e9e9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #282c3f;
+  }
+`;
+
+const NotificationList = styled.div`
+  max-height: 400px;
+  overflow-y: auto;
+`;
+
+const NotificationItem = styled.div`
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9e9e9;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #f5f5f6;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #282c3f;
+    line-height: 1.4;
+  }
+
+  small {
+    color: #94969f;
+    font-size: 12px;
+  }
+`;
+
+const NoNotifications = styled.div`
+  padding: 32px 20px;
+  text-align: center;
+  color: #94969f;
+  font-size: 14px;
+`;
+
+const MarkAllReadButton = styled.button`
+  padding: 8px 16px;
+  background-color: hsl(var(--orange));
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: hsl(var(--orange-hover));
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
 
 const CollectionsNavbarWrapper = styled.header`
   position: relative;
@@ -308,5 +386,154 @@ const LogoutButton = styled.button`
     transform: translateY(0);
   }
 `;
+
+const CollectionsNavbar = () => {
+  const { showCart, hideCart, state } = useGlobalContext();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Fetch user profile data
+  const { data: profileData } = useQuery({
+    queryKey: ['viewAPI'],
+    queryFn: viewAPI,
+    retry: 1,
+  });
+
+  // Fetch notifications
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: getNotificationsAPI,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Mutation for marking notifications as read
+  const markAsReadMutation = useMutation({
+    mutationFn: markNotificationsAsReadAPI,
+    mutationKey: ['markNotificationsAsRead'],
+    onSuccess: () => {
+      queryClient.invalidateQueries(['notifications']);
+    },
+    onError: (error) => {
+      console.error('Failed to mark notifications as read:', error);
+    },
+  });
+
+  const unreadNotifications = notifications.filter(notification => !notification.read);
+
+  const handleUserLogoClick = () => {
+    navigate("/profile");
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/collections/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleLogout = () => {
+    removeToken();
+    navigate("/login");
+  };
+
+  const handleNotificationClick = () => {
+    setShowNotifications(!showNotifications);
+  };
+
+  return (
+    <CollectionsNavbarWrapper>
+      <nav>
+        <div className="nav-left">
+          <div className="logo">
+            <Logo />
+          </div>
+          <ul className="nav-links">
+            <li>
+              <Link to="/collections/collectionshome">Home</Link>
+            </li>
+            <li>
+              <Link to="/collections/fashion">Fashion</Link>
+            </li>
+            <li>
+              <Link to="/collections/accessories">Accessories</Link>
+            </li>
+            <li>
+              <Link to="/collections/beauty">Beauty</Link>
+            </li>
+            <li>
+              <Link to="/collections/order">Order</Link>
+            </li>
+            <li>
+              <Link to="/collections/wishlist">Wishlist</Link>
+            </li>
+          </ul>
+        </div>
+
+        <div className="nav-right">
+          <NotificationButton onClick={handleNotificationClick}>
+            <FaBell />
+            {unreadNotifications.length > 0 && (
+              <NotificationBadge>{unreadNotifications.length}</NotificationBadge>
+            )}
+          </NotificationButton>
+          <button
+            onClick={() => (state.showingCart ? hideCart() : showCart())}
+            className="cart-btn"
+          >
+            <Cart />
+            {state.totalCartSize > 0 && <span>{state.totalCartSize}</span>}
+          </button>
+          <button className="avatar-btn" onClick={handleUserLogoClick}>
+            <img src={profileData?.user?.profilePic || avatar} alt="avatar" />
+          </button>
+          <LogoutButton onClick={handleLogout}>
+            Logout
+          </LogoutButton>
+          <FloatingCart className={`${state.showingCart ? "active" : ""}`} />
+        </div>
+      </nav>
+
+      {showNotifications && (
+        <NotificationDropdown>
+          <NotificationHeader>
+            <h3>Notifications</h3>
+            {notifications.length > 0 && (
+              <MarkAllReadButton
+                onClick={() => markAsReadMutation.mutate()}
+              >
+                Mark All as Read
+              </MarkAllReadButton>
+            )}
+          </NotificationHeader>
+          <NotificationList>
+            {notifications.length > 0 ? (
+              notifications.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  className={!notification.read ? 'unread' : ''}
+                >
+                  <p>{notification.message}</p>
+                  <small>
+                    {new Date(notification.date).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </small>
+                </NotificationItem>
+              ))
+            ) : (
+              <NoNotifications>No notifications</NoNotifications>
+            )}
+          </NotificationList>
+        </NotificationDropdown>
+      )}
+    </CollectionsNavbarWrapper>
+  );
+};
 
 export default CollectionsNavbar;

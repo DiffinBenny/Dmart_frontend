@@ -1,35 +1,58 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { Link } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
+import { forgotAPI } from "../services/userServices";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
+  const [message, setMessage] = useState(null);
 
-  const handleSubmit = (e) => {
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: forgotAPI,
+    mutationKey: ["forgot-password"],
+  });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Forgot Password submitted:", { email });
-    // Add logic to send a password reset email
+    try {
+      await mutateAsync({ email });
+      setMessage(`If an account with ${email} exists, a reset link has been sent.`);
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Error sending reset link");
+    }
   };
 
   return (
     <ForgotPasswordWrapper>
       <div className="forgot-password-container">
         <h1>Forgot Password</h1>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+        {message ? (
+          <div className="message">
+            {message}
+            <p className="back-to-login">
+              Remember your password? <Link to="/login">Login here</Link>
+            </p>
           </div>
-          <button type="submit">Reset Password</button>
-        </form>
-        <p>
-          Remember your password? <Link to="/login">Login here</Link>
-        </p>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" disabled={isPending}>
+              {isPending ? "Sending..." : "Reset Password"}
+            </button>
+            <p>
+              Remember your password? <Link to="/login">Login here</Link>
+            </p>
+          </form>
+        )}
       </div>
     </ForgotPasswordWrapper>
   );
@@ -40,7 +63,7 @@ const ForgotPasswordWrapper = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-image: url("/src/assets/login-background.jpg");
+  background-image: url("/src/assets/A.jpg");
   background-size: cover;
   background-position: center;
 
@@ -58,6 +81,17 @@ const ForgotPasswordWrapper = styled.div`
       font-size: 2rem;
       color: hsl(var(--black));
       margin-bottom: 1.5rem;
+    }
+
+    .message {
+      padding: 1rem;
+      background: hsl(var(--light-gray));
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+
+      .back-to-login {
+        margin-top: 1rem;
+      }
     }
 
     .form-group {
@@ -99,6 +133,11 @@ const ForgotPasswordWrapper = styled.div`
 
       &:hover {
         opacity: 0.9;
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
       }
     }
 

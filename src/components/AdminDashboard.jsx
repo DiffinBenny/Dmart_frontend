@@ -1,13 +1,115 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import styled from "styled-components";
 import { adminusersAPI, adminvendorAPI, adminviewallAPI } from "../services/adminServices";
 import { useNavigate } from "react-router-dom";
 import Logout from "./Logout";
-import ReportChart from "./ReportChart";
 import { getAllComplaintsAPI } from "../services/complaintServices";
 import { vendordeleteAPI } from "../services/VendorServices";
 import { getPaymentsAPI } from "../services/paymentServices";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+// Register Chart.js components
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+// ReportChart Component (Nested)
+const ReportChart = ({ reportData }) => {
+  // Function to get the last 7 days' dates in YYYY-MM-DD format
+  const getLast7Days = () => {
+    const dates = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      dates.push(date.toISOString().split("T")[0]); // e.g., "2025-04-23"
+    }
+    return dates;
+  };
+
+  // Aggregate orders by day
+  const aggregateOrdersByDay = () => {
+    const days = getLast7Days();
+    const revenueByDay = days.reduce((acc, day) => {
+      acc[day] = 0;
+      return acc;
+    }, {});
+
+    // Sum totalAmount for each day
+    reportData?.orders?.forEach((order) => {
+      const orderDate = new Date(order.createdAt).toISOString().split("T")[0];
+      if (revenueByDay.hasOwnProperty(orderDate)) {
+        revenueByDay[orderDate] += order.totalAmount;
+      }
+    });
+
+    return days.map((day) => revenueByDay[day] || 0);
+  };
+
+  // Chart data
+  const chartData = {
+    labels: getLast7Days().map((date) =>
+      new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    ), // e.g., "Apr 23"
+    datasets: [
+      {
+        label: "Daily Revenue",
+        data: aggregateOrdersByDay(),
+        backgroundColor: "#60a5fa",
+        borderColor: "#3b82f6",
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  // Chart options
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top",
+      },
+      title: {
+        display: true,
+        text: "Daily Revenue (Last 7 Days)",
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "Revenue (₹)",
+        },
+      },
+      x: {
+        title: {
+          display: true,
+          text: "Date",
+        },
+      },
+    },
+  };
+
+  // Handle empty or invalid data
+  if (!reportData?.orders || reportData.orders.length === 0) {
+    return <p>No order data available for the selected period.</p>;
+  }
+
+  return (
+    <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+      <Bar data={chartData} options={options} />
+    </div>
+  );
+};
 
 // Styled Components
 const Container = styled.div`
@@ -253,17 +355,18 @@ const AdminDashboard = () => {
   const [selectedMenu, setSelectedMenu] = useState("Dashboard");
   const [openDropdown, setOpenDropdown] = useState(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Fetch users data
   const {
     data: users,
     isLoading: isUsersLoading,
     error: usersError,
-    refetch,
   } = useQuery({
     queryKey: ["admin-users"],
     queryFn: adminusersAPI,
   });
+console.log(users);
 
   const {
     data: complaints,
@@ -276,7 +379,7 @@ const AdminDashboard = () => {
   const {
     data: report,
     isLoading: isReportLoading,
-    error: reportError
+    error: reportError,
   } = useQuery({
     queryKey: ["report"],
     queryFn: adminviewallAPI,
@@ -289,7 +392,7 @@ const AdminDashboard = () => {
     mutationKey: ["admin-users"],
     mutationFn: adminvendorAPI,
     onSuccess: () => {
-      refetch();
+      queryClient.invalidateQueries(["admin-users"]);
     },
   });
 
@@ -297,7 +400,8 @@ const AdminDashboard = () => {
     mutationKey: ["venor-del"],
     mutationFn: vendordeleteAPI,
     onSuccess: () => {
-      refetch();
+      queryClient.invalidateQueries(["admin-users"]);
+      queryClient.invalidateQueries(["feedback"]);
     },
   });
 
@@ -318,7 +422,7 @@ const AdminDashboard = () => {
     { title: "Dashboard" },
     { title: "Users Management" },
     { title: "Payment Management" },
-    { title: "Feedback & Support"},
+    { title: "Feedback & Support" },
     { title: "Report" },
   ];
 
@@ -348,16 +452,15 @@ const AdminDashboard = () => {
 
   const handleDelete = async (id) => {
     try {
-      await delMutation.mutate(id);
+      await delMutation.mutateAsync(id);
       alert("User deleted successfully!");
     } catch (error) {
-      console.error("Error rejecting user:", error);
+      console.error("Error deleting user:", error);
       alert("An error occurred during deletion. Please try again.");
     }
   };
 
   const handleViewDetails = (paymentId) => {
-    // Navigate to payment details page or show modal
     console.log("View payment details:", paymentId);
     // navigate(`/payment/${paymentId}`);
   };
@@ -405,7 +508,7 @@ const AdminDashboard = () => {
         <Header>
           <h1>{selectedMenu}</h1>
           <div>
-            <button>🔍 Search Reports</button>
+            {/* <button>🔍 Search Reports</button> */}
             <Logout />
           </div>
         </Header>
@@ -439,31 +542,33 @@ const AdminDashboard = () => {
                   <tr>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>Verified</th>
+                    <th>GST Number</th>
                     <th>Action</th>
+                    <th>Delete</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user, index) => (
+                  {users?.map((user, index) => (
                     <tr key={index}>
-                      <td>{user.username}</td>
-                      <td>{user.email}</td>
-                      <td>{user.subscribed ? "Yes" : "No"}</td>
+                      <td>{user?.businessName}</td>
+                      <td>{user?.user?.email}</td>
+                      <td>{user.gstNumber || "N/A"}</td>
+                      {/* <td>{user.subscribed ? "Yes" : "No"}</td> */}
                       <td>
-                        {user.verified === true ? (
+                        {user?.user?.verified === true ? (
                           <button disabled style={{ backgroundColor: "#4CAF50", color: "white" }}>
                             Verified
                           </button>
                         ) : (
                           <>
                             <button
-                              onClick={() => handleVerify(user.email)}
+                              onClick={() => handleVerify(user?.user?.email)}
                               disabled={isMutationLoading}
                             >
                               Verify
                             </button>
                             <button
-                              onClick={() => handleReject(user.email)}
+                              onClick={() => handleReject(user?.user?.email)}
                               disabled={isMutationLoading}
                             >
                               Reject
@@ -471,6 +576,15 @@ const AdminDashboard = () => {
                           </>
                         )}
                       </td>
+                      <td>
+                        <button
+                          onClick={() => handleDelete(user._id)}
+                          disabled={isMutationLoading}
+                          style={{ backgroundColor: "#ef4444", color: "white" }}
+                        >
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -500,27 +614,34 @@ const AdminDashboard = () => {
                 <tbody>
                   {payments?.map((payment) => (
                     <tr key={payment._id}>
-                      <td className="font-medium">{payment.order || 'N/A'}</td>
+                      <td className="font-medium">{payment.order || "N/A"}</td>
                       <td>
                         <div className="user-avatar">
-                          {payment.user?.name?.charAt(0) || 'U'}
+                          {payment.user?.name?.charAt(0) || "U"}
                         </div>
-                        {payment.user?.username || 'Unknown'}
+                        {payment.user?.username || "Unknown"}
                       </td>
                       <td>₹{payment.amount?.toLocaleString()}</td>
                       <td>
-                        <span className={`status-badge ${
-                          payment.paymentMethod === 'online' ? 'online' : 'cod'
-                        }`}>
-                          {payment.paymentMethod || 'COD'}
+                        <span
+                          className={`status-badge ${
+                            payment.paymentMethod === "online" ? "online" : "cod"
+                          }`}
+                        >
+                          {payment.paymentMethod || "COD"}
                         </span>
                       </td>
                       <td>
-                        <span className={`status-badge ${
-                          payment.paymentStatus === 'completed' ? 'completed' :
-                          payment.paymentStatus === 'failed' ? 'failed' : 'pending'
-                        }`}>
-                          {payment.paymentStatus || 'pending'}
+                        <span
+                          className={`status-badge ${
+                            payment.paymentStatus === "completed"
+                              ? "completed"
+                              : payment.paymentStatus === "failed"
+                              ? "failed"
+                              : "pending"
+                          }`}
+                        >
+                          {payment.paymentStatus || "pending"}
                         </span>
                       </td>
                       <td>{new Date(payment.createdAt).toLocaleDateString()}</td>

@@ -68,6 +68,21 @@ export const productviewAPI = async () => {
   }
 };
 
+export const stockviewAPI = async () => {
+  const token = getToken(); // Get fresh token
+  if (!token) {
+    throw new Error("Authentication token is missing. Please log in.");
+  }
+
+    const response = await axios.get(`${BASE_URL}/stock/get`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+ 
+};
+
 export const productviewallAPI = async () => {
   const token = getToken(); // Get fresh token
   if (!token) {

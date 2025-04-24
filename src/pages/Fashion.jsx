@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
-import {useSelector} from "react-redux"
-import { FaHeart, FaUser, FaComments, FaStore, FaPhone, FaEnvelope, FaMapMarkerAlt, FaStar } from "react-icons/fa";
+import { useSelector } from "react-redux";
+import { FaHeart, FaUser, FaComments, FaStore, FaPhone, FaEnvelope, FaMapMarkerAlt } from "react-icons/fa";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productviewallAPI, productviewAPI } from "../services/productServices";
 import { wishlistviewAPI, wishlistsaveAPI, wishlistdeleteAPI } from "../services/wishlistServices";
@@ -16,11 +16,11 @@ const Fashion = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [filteredItems, setFilteredItems] = useState([]);
   const [showVendorDetails, setShowVendorDetails] = useState(null);
-  const queryClient = useQueryClient();
-   const userId=useSelector((state)=>state.user.id)
-  // Check authentication before fetching
   const [searchQuery, setSearchQuery] = useState("");
+  const queryClient = useQueryClient();
+  const userId = useSelector((state) => state.user.id);
 
+  // Check authentication before fetching
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -28,35 +28,6 @@ const Fashion = () => {
     }
   }, [navigate]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const searchTerm = searchQuery.trim().toLowerCase();
-    
-    const fashionOnly = fashionItems.filter(item =>
-      item.category?.toLowerCase() === "fashion"
-    );
-  
-    if (!searchTerm) {
-      // Reset to selected category filter
-      const filtered = selectedCategory === "All"
-        ? fashionOnly
-        : fashionOnly.filter(item => item.subCategory === selectedCategory);
-      setFilteredItems(filtered);
-      return;
-    }
-  
-    const searchedItems = fashionOnly.filter(item =>
-      item.name.toLowerCase().includes(searchTerm)
-    );
-  
-    // Optional: Also consider category filtering in search
-    const finalFiltered = selectedCategory === "All"
-      ? searchedItems
-      : searchedItems.filter(item => item.subCategory === selectedCategory);
-  
-    setFilteredItems(finalFiltered);
-  };
-  
   // Fetch products using React Query
   const { 
     data: fashionItems = [], 
@@ -99,7 +70,7 @@ const Fashion = () => {
     }
   }, [wishlistData]);
 
-  // Filter products
+  // Filter products based on selected category
   useEffect(() => {
     if (fashionItems.length > 0) {
       const fashionOnly = fashionItems.filter(item => 
@@ -114,9 +85,40 @@ const Fashion = () => {
         );
         setFilteredItems(filtered);
       }
-    } console.log(fashionItems,"useeffect")
+    }
   }, [selectedCategory, fashionItems]);
-console.log(selectedCategory);
+
+  // Handle search by name and subCategory
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const searchTerm = searchQuery.trim().toLowerCase();
+    
+    const fashionOnly = fashionItems.filter(item =>
+      item.category?.toLowerCase() === "fashion"
+    );
+  
+    if (!searchTerm) {
+      // Reset to selected category filter
+      const filtered = selectedCategory === "All"
+        ? fashionOnly
+        : fashionOnly.filter(item => item.subCategory === selectedCategory);
+      setFilteredItems(filtered);
+      return;
+    }
+  
+    // Search by both name and subCategory
+    const searchedItems = fashionOnly.filter(item =>
+      item.name.toLowerCase().includes(searchTerm) ||
+      item.subCategory.toLowerCase().includes(searchTerm)
+    );
+  
+    // Apply category filter if not "All"
+    const finalFiltered = selectedCategory === "All"
+      ? searchedItems
+      : searchedItems.filter(item => item.subCategory === selectedCategory);
+  
+    setFilteredItems(finalFiltered);
+  };
 
   // Add to wishlist mutation
   const addToWishlistMutation = useMutation({
@@ -141,11 +143,8 @@ console.log(selectedCategory);
   });
 
   const handleVendorDetails = (vendor, e) => {
-    console.log(vendor, "details------",e)
     e.stopPropagation();
     e.preventDefault();
-    console.log(vendor);
-    
     setShowVendorDetails(vendor);
   };
 
@@ -156,7 +155,7 @@ console.log(selectedCategory);
   const handleChatClick = (vendorId, e) => {
     e.stopPropagation();
     e.preventDefault();
-    navigate(`/chat/${vendorId}/${userId}`);
+    navigate(`/collections/chat/${vendorId}/${userId}`);
   };
 
   const toggleWishlist = (productId, e) => {
@@ -164,14 +163,10 @@ console.log(selectedCategory);
     e.preventDefault();
     
     if (wishlist.includes(productId)) {
-      // Remove from wishlist
       removeFromWishlistMutation.mutate(productId);
-      // Optimistic update
       setWishlist(prev => prev.filter(id => id !== productId));
     } else {
-      // Add to wishlist
       addToWishlistMutation.mutate(productId);
-      // Optimistic update
       setWishlist(prev => [...prev, productId]);
     }
   };
@@ -197,15 +192,17 @@ console.log(selectedCategory);
           </CategoryButton>
         ))}
       </CategoryNav>
+
       <SearchForm onSubmit={handleSearch}>
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button type="submit">Search</button>
-        </SearchForm>
+        <input
+          type="text"
+          placeholder="Search by product name or subcategory..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <button type="submit">Search</button>
+      </SearchForm>
+
       {filteredItems.length === 0 ? (
         <NoProductsMessage>
           No products found in {selectedCategory} category
@@ -240,7 +237,7 @@ console.log(selectedCategory);
                   <VendorButton onClick={(e) => handleVendorDetails(item.vendor, e)}>
                     <FaUser /> Vendor
                   </VendorButton>
-                  <ChatButton onClick={(e) => handleChatClick(item.vendor.user, e)}>
+                  <ChatButton onClick={(e) => handleChatClick(item.vendor.user._id, e)}>
                     <FaComments /> Chat
                   </ChatButton>
                 </VendorActions>
@@ -258,11 +255,11 @@ console.log(selectedCategory);
               <FaStore /> Vendor Details
             </ModalHeader>
             <VendorInfo>
-  <p><FaUser /> <strong>Business Name:</strong> {showVendorDetails.businessName || 'Not provided'}</p>
-  <p><FaEnvelope /> <strong>Email:</strong> {showVendorDetails.user?.email || 'Not provided'}</p>
-  <p><FaPhone /> <strong>Phone:</strong> {showVendorDetails.phone || 'Not provided'}</p>
-  <p><FaMapMarkerAlt /> <strong>Address:</strong> {showVendorDetails.address || 'Not provided'}</p>
-</VendorInfo>
+              <p><FaUser /> <strong>Business Name:</strong> {showVendorDetails.businessName || 'Not provided'}</p>
+              <p><FaEnvelope /> <strong>Email:</strong> {showVendorDetails.user?.email || 'Not provided'}</p>
+              <p><FaPhone /> <strong>Phone:</strong> {showVendorDetails.phone || 'Not provided'}</p>
+              <p><FaMapMarkerAlt /> <strong>Address:</strong> {showVendorDetails.address || 'Not provided'}</p>
+            </VendorInfo>
           </VendorModalContent>
         </VendorModal>
       )}
@@ -279,12 +276,14 @@ const FashionWrapper = styled.div`
   min-height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `;
+
 const SearchForm = styled.form`
   display: flex;
   align-items: center;
   gap: 0.8rem;
   flex: 1;
   max-width: 400px;
+  margin-bottom: 2rem;
 
   input {
     flex: 1;
@@ -323,17 +322,11 @@ const SearchForm = styled.form`
   }
 
   @media only screen and (max-width: 768px) {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    padding: 1rem;
-    background-color: hsl(var(--white));
-    border-top: 1px solid hsl(var(--divider));
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     max-width: none;
+    padding: 1rem;
   }
 `;
+
 const PageHeader = styled.div`
   text-align: center;
   margin-bottom: 4rem;

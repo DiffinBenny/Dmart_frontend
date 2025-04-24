@@ -37,7 +37,7 @@ const VendorChat = () => {
 console.log(vendors);
 
   const handleVendorClick = (userId) => {
-    navigate(`/chat/${userId}/${vendorId}`);
+    navigate(`/vendor/chat/${userId}/${vendorId}`);
   };
 
   // Styles

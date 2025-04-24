@@ -32,6 +32,7 @@ import Checkout from "./pages/Checkout";
 import Chat from "./pages/Chat";
 import VendorChat from "./pages/Vendor/Vendorchat";
 import OrderList from "./pages/Vendor/OrderList";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   const { state } = useGlobalContext();
@@ -45,7 +46,8 @@ function App() {
     "/vendor/order-list",
     "/vendor/report",
     "/vendor/profile",
-    "/vendor/vendorchat"  // Added vendorchat route
+    "/vendor/vendorchat",
+    "/vendor/chat"  // Added vendorchat route
   ];
 
   // Check if the current page is a vendor-based page
@@ -103,11 +105,12 @@ function App() {
         <Route path="/vendor-register" element={<VendorRegister />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/search" element={<SearchResults />} />
         <Route path="/collections/product/:productId" element={<Product />} />
-        <Route path="/payment/:id" element={<Payment />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/chat/:vendorId/:userId" element={<Chat />} />
+        <Route path="/collections/payment/:id" element={<Payment />} />
+        <Route path="/collections/checkout" element={<Checkout />} />
+        <Route path="/collections/chat/:vendorId/:userId" element={<Chat />} />
 
         {/* Vendor Routes */}
         <Route path="/vendorhome" element={<VendorHome />} />
@@ -116,6 +119,7 @@ function App() {
         <Route path="/vendor/order-list" element={<OrderList />} />
         <Route path="/vendor/report" element={<Report />} />
         <Route path="/vendor/vendorchat" element={<VendorChat />} />
+        <Route path="/vendor/chat/:vendorId/:userId" element={<Chat />} />
         
         <Route path="/vendor/profile" element={<VendorProfilePage />} />
 

@@ -15,13 +15,11 @@ const Register = () => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Mutation for registering a user
   const { mutateAsync, isPending, isError, error } = useMutation({
     mutationFn: registerAPI,
     mutationKey: ["register-user"],
   });
 
-  // Validation schema using Yup
   const validationSchema = Yup.object({
     username: Yup.string()
       .min(5, "Username must be at least 5 characters")
@@ -39,13 +37,14 @@ const Register = () => {
       .required("Email is required"),
     password: Yup.string()
       .min(6, "Password must be at least 6 characters")
+      .matches(/[a-z]/, "Password must contain at least one lowercase letter")
+      .matches(/[A-Z]/, "Password must contain at least one uppercase letter")
       .required("Password is required"),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref("password"), null], "Passwords must match")
       .required("Confirm password is required"),
   });
 
-  // Formik setup
   const formik = useFormik({
     initialValues: {
       username: "",
@@ -57,17 +56,16 @@ const Register = () => {
     validationSchema,
     onSubmit: async (values, { resetForm }) => {
       try {
-        console.log("Submitting form data:", values); // Log form data
+        console.log("Submitting form data:", values);
         const token = await mutateAsync(values);
         setErrorMessage(null);
         if (token) {
           console.log(token);
-          
           sessionStorage.setItem("userToken", token);
           const decodedData = jwtDecode(token);
-          dispatch(loginUserAction(decodedData)); // Dispatch token and role
+          dispatch(loginUserAction(decodedData));
           resetForm();
-          navigate("/collections/collectionshome");
+          navigate("/login");
         } else {
           alert("Invalid response from server");
         }
@@ -80,7 +78,7 @@ const Register = () => {
 
   return (
     <PageWrapper>
-      <RegisterWrapper>
+      <GlassFormWrapper>
         <h1>Register</h1>
         <form onSubmit={formik.handleSubmit}>
           {/* Username Field */}
@@ -165,7 +163,7 @@ const Register = () => {
         <p>
           Already have an account? <Link to="/login">Login here</Link>
         </p>
-      </RegisterWrapper>
+      </GlassFormWrapper>
     </PageWrapper>
   );
 };
@@ -176,61 +174,61 @@ const PageWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url("/src/assets/login2.jpg.webp") no-repeat center center fixed;
+  background: url("/src/assets/A.jpg") no-repeat center center fixed;
   background-size: cover;
 `;
 
-const RegisterWrapper = styled.div`
+const GlassFormWrapper = styled.div`
   max-width: 600px;
   width: 90%;
   margin: 2rem;
   padding: 3rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(5px);
-  transition: all 0.3s ease;
-
-  &:hover {
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
-  }
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  color: #fff;
 
   h1 {
     text-align: center;
     margin-bottom: 2rem;
     font-size: 2.5rem;
-    color: #333;
-    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   .form-group {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 
     label {
       display: block;
       margin-bottom: 0.75rem;
       font-size: 1.1rem;
-      color: #444;
-      font-weight: 500;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
     input {
       width: 100%;
       padding: 1rem;
-      border: 1px solid #ddd;
-      border-radius: 0.5rem;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 0.75rem;
       font-size: 1rem;
       outline: none;
       transition: all 0.3s ease;
+      color: #333;
 
       &:focus {
-        border-color: #ff6b35;
-        box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+        background: rgba(255, 255, 255, 0.95);
+        border-color: rgba(255, 107, 53, 0.6);
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2);
       }
 
       &::placeholder {
-        color: #aaa;
+        color: #666;
       }
     }
   }
@@ -238,18 +236,20 @@ const RegisterWrapper = styled.div`
   button {
     width: 100%;
     padding: 1rem;
-    background-color: #ff6b35;
+    background: rgba(255, 107, 53, 0.8);
     color: white;
     border: none;
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
     cursor: pointer;
     font-size: 1.1rem;
     font-weight: 600;
     transition: all 0.3s ease;
     margin-top: 1rem;
+    backdrop-filter: blur(4px);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 
     &:hover {
-      background-color: #f45d2a;
+      background: rgba(244, 93, 42, 0.9);
       transform: translateY(-2px);
     }
 
@@ -258,7 +258,7 @@ const RegisterWrapper = styled.div`
     }
 
     &:disabled {
-      background-color: #ff9d7d;
+      background: rgba(255, 157, 125, 0.7);
       cursor: not-allowed;
       transform: none;
     }
@@ -268,17 +268,17 @@ const RegisterWrapper = styled.div`
     text-align: center;
     margin-top: 2rem;
     font-size: 1.1rem;
-    color: #555;
+    color: rgba(255, 255, 255, 0.9);
 
     a {
-      color: #ff6b35;
+      color: #ffd700;
       text-decoration: none;
       font-weight: 500;
       transition: all 0.2s ease;
 
       &:hover {
         text-decoration: underline;
-        color: #f45d2a;
+        color: #ffeb3b;
       }
     }
   }
@@ -286,20 +286,21 @@ const RegisterWrapper = styled.div`
   .error-message {
     margin-top: 1.5rem;
     padding: 1rem;
-    background-color: #ffebee;
-    color: #d32f2f;
-    border-radius: 0.5rem;
+    background: rgba(211, 47, 47, 0.7);
+    color: #fff;
+    border-radius: 0.75rem;
     text-align: center;
     font-size: 1rem;
-    border-left: 4px solid #d32f2f;
+    border-left: 4px solid rgba(255, 255, 255, 0.3);
   }
 `;
 
 const ErrorMessage = styled.p`
-  color: #d32f2f;
+  color: #ffeb3b;
   font-size: 0.9rem;
   margin-top: 0.5rem;
   text-align: left;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 `;
 
 export default Register;

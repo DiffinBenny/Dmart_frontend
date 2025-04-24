@@ -33,13 +33,29 @@ export const orderviewAPI = async () => {
     return response.data
 }
 
+export const orderviewOneAPI = async (data) => {
+    
+    console.log(data);
+    
+    const response = await axios.get(`${BASE_URL}/order/viewone/${data}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+        withCredentials: true
+    });
+    return response.data
+} 
+
 export const ordercancelAPI = async (data) => {
+    const token = getToken()
+console.log(data);
+
     const response = await axios.post(`${BASE_URL}/order/cancel`, data
     , {
         headers: {
             Authorization: `Bearer ${token}`,
         },
-        withCredentials: true
+        
     });
     return response.data
 }

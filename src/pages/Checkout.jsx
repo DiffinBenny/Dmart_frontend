@@ -142,7 +142,7 @@ const Checkout = () => {
       }
 
       if (formData.paymentType === 'card' && orderId) {
-        navigate(`/payment/${orderId}`);
+        navigate(`/collections/payment/${orderId}`);
       } else {
         alert('Order placed successfully! Your order will be delivered in 7 days.');
         navigate('/collections/collectionshome');

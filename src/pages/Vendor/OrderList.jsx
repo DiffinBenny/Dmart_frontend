@@ -176,7 +176,7 @@ const OrderListContainer = styled.div`
   padding: 2rem;
   min-height: 100vh;
   width: 100vw;
-  background-image: url(${backgroundImage});
+  // background-image: url(${backgroundImage});
   background-size: cover;
   background-position: center;
   background-attachment: fixed;

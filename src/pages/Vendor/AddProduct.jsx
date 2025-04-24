@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import styled from "styled-components";
@@ -7,6 +7,9 @@ import { productaddAPI, producteditAPI } from "../../services/productServices";
 
 const AddProduct = ({ initialData = null }) => {
   const isEditMode = !!initialData;
+  const [showStockInput, setShowStockInput] = useState(false);
+  const [additionalStock, setAdditionalStock] = useState("");
+
   const { mutateAsync, isPending, isError, error } = useMutation({
     mutationFn: isEditMode ? producteditAPI : productaddAPI,
     mutationKey: [isEditMode ? "edit-product" : "add-product"],
@@ -61,8 +64,6 @@ const AddProduct = ({ initialData = null }) => {
         Object.keys(values).forEach(key => {
           if (key !== "images") {
             formData.append(key, values[key]);
-            console.log(key, values[key]);
-            
           }
         });
         
@@ -75,11 +76,8 @@ const AddProduct = ({ initialData = null }) => {
         if (isEditMode) {
           formData.append("id", initialData._id);
         }
-        console.log("HIHIHIH",formData.get("id"));
-         
         
-        const data = await mutateAsync(formData)
-        console.log(data);
+        const data = await mutateAsync(formData);
         
         if (!isEditMode) {
           resetForm();
@@ -90,6 +88,22 @@ const AddProduct = ({ initialData = null }) => {
       }
     }
   });
+
+  const handleAddStock = () => {
+    setShowStockInput(true);
+  };
+
+  const handleSaveStock = () => {
+    const additional = parseInt(additionalStock) || 0;
+    if (additional >= 0) {
+      const newStock = parseInt(formik.values.stock || 0) + additional;
+      formik.setFieldValue('stock', newStock);
+      setShowStockInput(false);
+      setAdditionalStock("");
+    } else {
+      alert("Please enter a valid positive number");
+    }
+  };
 
   const getSubCategoryOptions = () => {
     switch (formik.values.category?.toLowerCase()) {
@@ -279,14 +293,28 @@ const AddProduct = ({ initialData = null }) => {
             
             <FormGroup>
               <Label>Stock *</Label>
-              <Input
-                type="number"
-                name="stock"
-                value={formik.values.stock}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                placeholder="Enter stock quantity"
-              />
+              <StockContainer>
+                <StockDisplay>{formik.values.stock || 0}</StockDisplay>
+                <AddStockButton type="button" onClick={handleAddStock}>
+                  Add Stock
+                </AddStockButton>
+              </StockContainer>
+              
+              {showStockInput && (
+                <StockInputContainer>
+                  <Input
+                    type="number"
+                    value={additionalStock}
+                    onChange={(e) => setAdditionalStock(e.target.value)}
+                    placeholder="Enter additional stock"
+                    min="0"
+                  />
+                  <SaveStockButton type="button" onClick={handleSaveStock}>
+                    Save
+                  </SaveStockButton>
+                </StockInputContainer>
+              )}
+              
               {formik.touched.stock && formik.errors.stock && (
                 <ErrorMessage>{formik.errors.stock}</ErrorMessage>
               )}
@@ -523,4 +551,55 @@ const ExistingImage = styled.img`
   object-fit: cover;
   border-radius: 4px;
   border: 1px solid #ddd;
+`;
+
+const StockContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const StockDisplay = styled.div`
+  padding: 0.85rem;
+  font-size: 1.1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  width: 100%;
+`;
+
+const AddStockButton = styled.button`
+  padding: 0.85rem 1.75rem;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #28a745;
+  color: white;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #218838;
+  }
+`;
+
+const StockInputContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+`;
+
+const SaveStockButton = styled.button`
+  padding: 0.85rem 1.75rem;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #0069d9;
+  }
 `;

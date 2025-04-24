@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
-import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
+import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "../icons";
+import { FaBell } from 'react-icons/fa';
 import { avatar } from "../assets/imagedata";
 import { removeToken } from "../utils/storageHandler";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getVendorProfileAPI } from "../services/VendorServices";
+import { deleteAllNotificationsAPI, getNotificationsAPI, markNotificationsAsReadAPI } from "../services/notificationServices";
 
 // Styled Components
 const NavigatorWrapper = styled.header`
@@ -185,77 +187,183 @@ const NavigatorWrapper = styled.header`
   }
 `;
 
-const VendorNavbar = () => {
-  const navigate = useNavigate(); // Use the useNavigate hook
+const NotificationButton = styled.button`
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  font-size: 2rem;
+  color: #333;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  // Fetch vendor profile data
-  const { data: profileData } = useQuery({
-    queryKey: ['vendorProfile'],
-    queryFn: getVendorProfileAPI,
-    retry: 1
-  });
+  &:hover {
+    color: hsl(var(--orange));
+    transform: scale(1.05);
+  }
+`;
 
-  // Function to handle avatar button click
-  const handleAvatarClick = () => {
-    navigate("/vendor/profile"); // Navigate to the VendorProfilePage
-  };
+const NotificationBadge = styled.span`
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #ff3f6c;
+  color: white;
+  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(25%, -25%);
+`;
 
-  const handleLogout = () => {
-    removeToken();
-    navigate("/login");
-  };
+const NotificationDropdown = styled.div`
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 20px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
+  width: 400px;
+  max-height: 480px;
+  overflow-y: auto;
+  z-index: 1000;
 
-  return (
-    <NavigatorWrapper>
-      <nav>
-        <div className="nav-left">
-          {/* Logo */}
-          <div className="logo">
-            <Logo />
-          </div>
+  &:before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 25px;
+    width: 12px;
+    height: 12px;
+    background: white;
+    transform: rotate(45deg);
+    border-left: 1px solid #e9e9e9;
+    border-top: 1px solid #e9e9e9;
+  }
 
-          {/* Search Bar */}
-          <div className="search-bar">
-            <input type="text" placeholder="Search..." />
-            <button type="submit">Search</button>
-          </div>
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
 
-          {/* Navigation Links */}
-          <ul className="nav-links">
-            <li>
-              <Link to="/vendorhome">Home</Link>
-            </li>
-            <li>
-              <Link to="/vendor/add-product">Add Product</Link>
-            </li>
-            <li>
-              <Link to="/vendor/edit-product">View Product</Link>
-            </li>
-            <li>
-              <Link to="/vendor/order-list">Order List</Link>
-            </li>
-            <li>
-              <Link to="/vendor/report">Report</Link>
-            </li>
-            <li>
-              <Link to="/vendor/vendorchat">Chat</Link>
-            </li>
-          </ul>
-        </div>
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
 
-        <div className="nav-right">
-          {/* Avatar Button */}
-          <button className="avatar-btn" onClick={handleAvatarClick}>
-            <img src={profileData?.profilePic || avatar} alt="avatar" />
-          </button>
-          <LogoutButton onClick={handleLogout}>
-            Logout
-          </LogoutButton>
-        </div>
-      </nav>
-    </NavigatorWrapper>
-  );
-};
+  &::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+  }
+`;
+
+const NotificationHeader = styled.div`
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9e9e9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #282c3f;
+  }
+`;
+
+const NotificationList = styled.div`
+  max-height: 400px;
+  overflow-y: auto;
+`;
+
+const NotificationItem = styled.div`
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9e9e9;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #f5f5f6;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #282c3f;
+    line-height: 1.4;
+  }
+
+  small {
+    color: #94969f;
+    font-size: 12px;
+  }
+`;
+
+const NoNotifications = styled.div`
+  padding: 32px 20px;
+  text-align: center;
+  color: #94969f;
+  font-size: 14px;
+`;
+
+const MarkAllReadButton = styled.button`
+  padding: 8px 16px;
+  background-color: hsl(var(--orange));
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.3s ease;
+  opacity: ${props => props.disabled ? 0.7 : 1};
+
+  &:hover:not(:disabled) {
+    background-color: hsl(var(--orange-hover));
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+`;
+
+const DeleteAllButton = styled.button`
+  padding: 8px 16px;
+  background-color: #ff3f6c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.3s ease;
+  opacity: ${props => props.disabled ? 0.7 : 1};
+
+  &:hover:not(:disabled) {
+    background-color: #e0355e;
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+`;
 
 const LogoutButton = styled.button`
   padding: 0.8rem 1.6rem;
@@ -285,5 +393,160 @@ const LogoutButton = styled.button`
     padding: 0.6rem 1.2rem;
   }
 `;
+
+const VendorNavbar = () => {
+  const navigate = useNavigate();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Fetch vendor profile data
+  const { data: profileData } = useQuery({
+    queryKey: ['vendorProfile'],
+    queryFn: getVendorProfileAPI,
+    retry: 1
+  });
+
+  // Fetch notifications
+  const { data: notifications = [], refetch: refetchNotifications } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: getNotificationsAPI,
+    refetchInterval: 30000 // Refetch every 30 seconds
+  });
+
+  // Mark notifications as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: markNotificationsAsReadAPI,
+    mutationKey: ['markNotificationsAsRead'],
+    onSuccess: () => {
+      queryClient.invalidateQueries(['notifications']);
+    },
+    onError: (error) => {
+      console.error('Failed to mark notifications as read:', error);
+    }
+  });
+
+  // Delete all notifications mutation
+  const deleteAllMutation = useMutation({
+    mutationFn: deleteAllNotificationsAPI,
+    mutationKey: ['del-notifications'],
+    onSuccess: () => {
+      queryClient.invalidateQueries(['notifications']);
+      refetchNotifications();
+    },
+    onError: (error) => {
+      console.error('Failed to delete notifications:', error);
+    }
+  });
+
+  const unreadNotifications = notifications.filter(notification => !notification.read);
+
+  const handleNotificationClick = () => {
+    setShowNotifications(!showNotifications);
+  };
+
+  const handleAvatarClick = () => {
+    navigate("/vendor/profile");
+  };
+
+  const handleLogout = () => {
+    removeToken();
+    navigate("/login");
+  };
+
+  return (
+    <NavigatorWrapper>
+      <nav>
+        <div className="nav-left">
+          {/* Logo */}
+          <div className="logo">
+            <Logo />
+          </div>
+
+          {/* Navigation Links */}
+          <ul className="nav-links">
+            <li>
+              <Link to="/vendorhome">Home</Link>
+            </li>
+            <li>
+              <Link to="/vendor/add-product">Add Product</Link>
+            </li>
+            <li>
+              <Link to="/vendor/edit-product">View Product</Link>
+            </li>
+            <li>
+              <Link to="/vendor/order-list">Order List</Link>
+            </li>
+            <li>
+              <Link to="/vendor/report">Report</Link>
+            </li>
+            <li>
+              <Link to="/vendor/vendorchat">Chat</Link>
+            </li>
+          </ul>
+        </div>
+
+        <div className="nav-right">
+          <NotificationButton onClick={handleNotificationClick}>
+            <FaBell />
+            {unreadNotifications.length > 0 && (
+              <NotificationBadge>{unreadNotifications.length}</NotificationBadge>
+            )}
+          </NotificationButton>
+          
+          <button className="avatar-btn" onClick={handleAvatarClick}>
+            <img src={profileData?.profilePic || avatar} alt="avatar" />
+          </button>
+          <LogoutButton onClick={handleLogout}>
+            Logout
+          </LogoutButton>
+        </div>
+      </nav>
+
+      {showNotifications && (
+        <NotificationDropdown>
+          <NotificationHeader>
+            <h3>Notifications</h3>
+            {notifications.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <MarkAllReadButton
+                  onClick={() => markAsReadMutation.mutate()}
+                  disabled={markAsReadMutation.isPending}
+                >
+                  {markAsReadMutation.isPending ? 'Marking...' : 'Mark All as Read'}
+                </MarkAllReadButton>
+               
+              </div>
+            )}
+          </NotificationHeader>
+          <NotificationList>
+            {notifications.length > 0 ? (
+              notifications.map((notification) => (
+                <NotificationItem 
+                  key={notification.id} 
+                  className={!notification.read ? 'unread' : ''}
+                >
+                  <p>{notification.message}</p>
+                  <small>
+                    {new Date(notification.date).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </small>
+                </NotificationItem>
+              ))
+            ) : (
+              <NoNotifications>
+                No notifications
+              </NoNotifications>
+            )}
+          </NotificationList>
+        </NotificationDropdown>
+      )}
+    </NavigatorWrapper>
+  );
+};
 
 export default VendorNavbar;

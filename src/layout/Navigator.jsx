@@ -7,7 +7,8 @@ import { useGlobalContext } from "../context/context";
 const navLinks = [
   { name: "home", path: "/" },
   { name: "login", path: "/login" },
-  { name: "register", path: "/register", subItems: [
+  // { name: "register", path: "/register", subItems: [
+    { name: "register",  subItems: [
     { name: "Vendor Register", path: "/vendor-register" },
     { name: "User Register", path: "/register" },
   ] },

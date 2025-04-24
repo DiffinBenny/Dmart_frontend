@@ -17,6 +17,7 @@ import {
 } from 'chart.js';
 import backgroundImage from "../../assets/e1.jpg";
 import { orderviewallAPI } from "../../services/orderServices";
+import { productviewAPI, stockviewAPI } from "../../services/productServices";
 
 // Register ChartJS components
 ChartJS.register(
@@ -33,9 +34,22 @@ ChartJS.register(
 
 const Report = () => {
   const [dateRange, setDateRange] = useState("week"); // week, month, year
-  const { data: orders, isLoading, isError, error } = useQuery({
+
+  // Fetch orders
+  const { data: orders, isLoading: isLoadingOrders, isError: isErrorOrders, error: ordersError } = useQuery({
     queryKey: ['vendorOrders'],
     queryFn: orderviewallAPI
+  });
+
+  const { data: stockData } = useQuery({
+    queryKey: ['vendorstock'],
+    queryFn: stockviewAPI 
+  });
+
+  // Fetch products
+  const { data: products, isLoading: isLoadingProducts, isError: isErrorProducts, error: productsError } = useQuery({
+    queryKey: ['products'],
+    queryFn: productviewAPI
   });
 
   // Process data for charts and stats
@@ -69,10 +83,10 @@ const Report = () => {
     const salesLabels = Object.keys(salesByDay).sort();
     const salesValues = salesLabels.map(date => salesByDay[date]);
 
-    // Group by category (assuming items have category property)
+    // Group by category
     const categoryCount = {};
     orders.forEach(order => {
-      order.items.forEach(item => {
+      order?.items?.forEach(item => {
         const category = item.product?.category || 'Unknown';
         categoryCount[category] = (categoryCount[category] || 0) + 1;
       });
@@ -146,8 +160,24 @@ const Report = () => {
     };
   }, [orders]);
 
-  if (isLoading) return <div>Loading...</div>;
-  if (isError) return <div>Error: {error.message}</div>;
+  // Process stock data
+  // const stockData = useMemo(() => {
+  //   if (!products || products.length === 0) {
+  //     return [];
+  //   }
+
+  //   return products.map(product => ({
+  //     productId: product._id,
+  //     productName: product.name,
+  //     currentStock: product.stock || 0,
+  //     stockAdded: 0, // This could be enhanced with actual stock addition history if available
+  //     totalStock: product.stock || 0
+  //   }));
+  // }, [products]);
+
+  if (isLoadingOrders || isLoadingProducts) return <div>Loading...</div>;
+  if (isErrorOrders) return <div>Error: {ordersError.message}</div>;
+  if (isErrorProducts) return <div>Error: {productsError.message}</div>;
 
   return (
     <ReportContainer>
@@ -285,10 +315,43 @@ const Report = () => {
           </tbody>
         </Table>
       </Section>
+
+      <Section>
+        <h2>Stock Management</h2>
+        <Table>
+          <thead>
+            <tr>
+              <th>Product ID</th>
+              <th>Product Name</th>
+              <th>Current Stock</th>
+              <th>Stock Added</th>
+              <th>Total Stock</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stockData.length > 0 ? (
+              stockData.map(product => (
+                <tr key={product.productId}>
+                  <td>#{product.productId.slice(-6)}</td>
+                  <td>{product.productName}</td>
+                  <td>{product.currentStock}</td>
+                  <td>{product.stockAdded}</td>
+                  <td>{product.totalStock}</td>
+                  <td>{product.date}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5">No stock data available</td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
+      </Section>
     </ReportContainer>
   );
 };
-
 
 const ReportContainer = styled.div`
   padding: 2rem;

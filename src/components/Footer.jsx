@@ -57,7 +57,7 @@ const Footer = () => {
             <li>Returns Center</li>
             <li>Recalls and Product Safety Alerts</li>
             <li>100% Purchase Protection</li>
-            <li>Amazon App Download Help</li>
+            <li> Download Help</li>
           </ul>
         </div>
       </div>

@@ -121,7 +121,7 @@ const EditProduct = () => {
                   <PlaceholderImage>No Image</PlaceholderImage>
                 )}
                 <ProductName>{product.name}</ProductName>
-                <ProductPrice>${product.price}</ProductPrice>
+                <ProductPrice>{product.price}</ProductPrice>
                 <ButtonGroup>
                   <Button onClick={() => handleViewMore(product)}>View More</Button>
                   <Button onClick={() => handleEdit(product)}>Edit</Button>

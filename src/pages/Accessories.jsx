@@ -16,6 +16,7 @@ const Accessories = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [filteredItems, setFilteredItems] = useState([]);
   const [showVendorDetails, setShowVendorDetails] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const queryClient = useQueryClient();
   const userId = useSelector((state) => state.user.id);
 
@@ -69,6 +70,41 @@ const Accessories = () => {
     }
   }, [wishlistData]);
 
+  // Handle search functionality
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const searchTerm = searchQuery.trim().toLowerCase();
+    
+    const accessoriesOnly = accessoryItems.filter(item =>
+      item.category?.toLowerCase() === "accessories"
+    );
+  
+    if (!searchTerm) {
+      // Reset to selected category filter
+      const filtered = selectedCategory === "All"
+        ? accessoriesOnly
+        : accessoriesOnly.filter(item => 
+            item.subCategory?.toLowerCase() === selectedCategory.toLowerCase()
+          );
+      setFilteredItems(filtered);
+      return;
+    }
+  
+    const searchedItems = accessoriesOnly.filter(item =>
+      item.name.toLowerCase().includes(searchTerm) ||
+      item.subCategory?.toLowerCase().includes(searchTerm)
+    );
+  
+    // Also consider category filtering in search
+    const finalFiltered = selectedCategory === "All"
+      ? searchedItems
+      : searchedItems.filter(item => 
+          item.subCategory?.toLowerCase() === selectedCategory.toLowerCase()
+        );
+  
+    setFilteredItems(finalFiltered);
+  };
+
   // Filter products
   useEffect(() => {
     if (accessoryItems.length > 0) {
@@ -76,25 +112,36 @@ const Accessories = () => {
         item.category?.toLowerCase() === "accessories"
       );
 
-      if (selectedCategory === "All") {
-        setFilteredItems(accessoriesOnly);
-      } else {
-        const filtered = accessoriesOnly.filter(item => 
+      let filtered = accessoriesOnly;
+
+      if (searchQuery.trim()) {
+        const searchTerm = searchQuery.trim().toLowerCase();
+        filtered = filtered.filter(item =>
+          item.name.toLowerCase().includes(searchTerm) ||
+          item.subCategory?.toLowerCase().includes(searchTerm)
+        );
+      }
+
+      if (selectedCategory !== "All") {
+        filtered = filtered.filter(item => 
           item.subCategory?.toLowerCase() === selectedCategory.toLowerCase()
         );
-        setFilteredItems(filtered);
       }
+
+      setFilteredItems(filtered);
     }
-  }, [selectedCategory, accessoryItems]);
+  }, [selectedCategory, accessoryItems, searchQuery]);
 
   // Add to wishlist mutation
   const addToWishlistMutation = useMutation({
     mutationFn: wishlistsaveAPI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      toast.success("Added to wishlist");
     },
     onError: (error) => {
       console.error("Error adding to wishlist:", error);
+      toast.error("Failed to add to wishlist");
     }
   });
 
@@ -103,9 +150,11 @@ const Accessories = () => {
     mutationFn: wishlistdeleteAPI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      toast.success("Removed from wishlist");
     },
     onError: (error) => {
       console.error("Error removing from wishlist:", error);
+      toast.error("Failed to remove from wishlist");
     }
   });
 
@@ -122,7 +171,7 @@ const Accessories = () => {
   const handleChatClick = (vendorId, e) => {
     e.stopPropagation();
     e.preventDefault();
-    navigate(`/chat/${vendorId}/${userId}`);
+    navigate(`/collections/chat/${vendorId}/${userId}`);
   };
 
   const toggleWishlist = (productId, e) => {
@@ -130,17 +179,11 @@ const Accessories = () => {
     e.preventDefault();
     
     if (wishlist.includes(productId)) {
-      // Remove from wishlist
       removeFromWishlistMutation.mutate(productId);
-      // Optimistic update
       setWishlist(prev => prev.filter(id => id !== productId));
-      toast.success("Removed from wishlist");
     } else {
-      // Add to wishlist
       addToWishlistMutation.mutate(productId);
-      // Optimistic update
       setWishlist(prev => [...prev, productId]);
-      toast.success("Added to wishlist");
     }
   };
 
@@ -166,9 +209,19 @@ const Accessories = () => {
         ))}
       </CategoryNav>
 
+      <SearchForm onSubmit={handleSearch}>
+        <input
+          type="text"
+          placeholder="Search by product name or subcategory..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <button type="submit">Search</button>
+      </SearchForm>
+
       {filteredItems.length === 0 ? (
         <NoProductsMessage>
-          No products found in {selectedCategory} category
+          No products found {searchQuery ? `matching "${searchQuery}"` : `in ${selectedCategory} category`}
         </NoProductsMessage>
       ) : (
         <ProductGrid>
@@ -200,7 +253,7 @@ const Accessories = () => {
                   <VendorButton onClick={(e) => handleVendorDetails(item.vendor, e)}>
                     <FaUser /> Vendor
                   </VendorButton>
-                  <ChatButton onClick={(e) => handleChatClick(item.vendor.user, e)}>
+                  <ChatButton onClick={(e) => handleChatClick(item.vendor.user._id, e)}>
                     <FaComments /> Chat
                   </ChatButton>
                 </VendorActions>
@@ -218,8 +271,8 @@ const Accessories = () => {
               <FaStore /> Vendor Details
             </ModalHeader>
             <VendorInfo>
-              <p><FaUser /> <strong>Name:</strong> {showVendorDetails.name}</p>
-              <p><FaEnvelope /> <strong>Email:</strong> {showVendorDetails.email}</p>
+              <p><FaUser /> <strong>Business Name:</strong> {showVendorDetails.businessName || 'Not provided'}</p>
+              <p><FaEnvelope /> <strong>Email:</strong> {showVendorDetails.user?.email || 'Not provided'}</p>
               <p><FaPhone /> <strong>Phone:</strong> {showVendorDetails.phone || 'Not provided'}</p>
               <p><FaMapMarkerAlt /> <strong>Address:</strong> {showVendorDetails.address || 'Not provided'}</p>
               <p><FaStar /> <strong>Rating:</strong> {showVendorDetails.rating || 'Not rated yet'}</p>
@@ -231,7 +284,7 @@ const Accessories = () => {
   );
 };
 
-// Styled Components (same as in your Fashion component)
+// Styled Components
 const AccessoriesWrapper = styled.div`
   padding: 3rem 2rem;
   max-width: 1600px;
@@ -276,7 +329,7 @@ const CategoryNav = styled.div`
   display: flex;
   justify-content: center;
   gap: 1.5rem;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
   padding: 1.5rem;
   background: white;
   border-radius: 16px;
@@ -301,6 +354,55 @@ const CategoryButton = styled.button`
   &:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
+  }
+`;
+
+const SearchForm = styled.form`
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0 auto 3rem auto;
+  max-width: 500px;
+  width: 100%;
+  padding: 0 1.5rem;
+
+  input {
+    flex: 1;
+    padding: 0.8rem 1.2rem;
+    border: 1px solid #ddd;
+    border-radius: 2.5rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+
+    &:focus {
+      outline: none;
+      border-color: #ff6b6b;
+      box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.1);
+    }
+  }
+
+  button {
+    padding: 0.8rem 1.6rem;
+    background-color: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 2.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+
+    &:hover {
+      background-color: #ff5252;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
   }
 `;
 

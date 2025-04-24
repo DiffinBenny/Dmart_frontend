@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
-import { FaHeart, FaUser, FaComments, FaStore, FaPhone, FaEnvelope, FaMapMarkerAlt, FaStar, FaSearch } from "react-icons/fa";
+import { FaHeart, FaUser, FaComments, FaStore, FaPhone, FaEnvelope, FaMapMarkerAlt, FaStar } from "react-icons/fa";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productviewallAPI, productviewAPI } from "../services/productServices";
 import { wishlistviewAPI, wishlistsaveAPI, wishlistdeleteAPI } from "../services/wishlistServices";
@@ -71,7 +71,6 @@ const Beauty = () => {
     );
   
     if (!searchTerm) {
-      // Reset to selected category filter
       const filtered = selectedCategory === "All"
         ? beautyOnly
         : beautyOnly.filter(item => item.subCategory === selectedCategory);
@@ -80,10 +79,10 @@ const Beauty = () => {
     }
   
     const searchedItems = beautyOnly.filter(item =>
-      item.name.toLowerCase().includes(searchTerm)
+      item.name.toLowerCase().includes(searchTerm) ||
+      item.subCategory.toLowerCase().includes(searchTerm)
     );
   
-    // Apply category filtering to search results
     const finalFiltered = selectedCategory === "All"
       ? searchedItems
       : searchedItems.filter(item => item.subCategory === selectedCategory);
@@ -91,7 +90,7 @@ const Beauty = () => {
     setFilteredItems(finalFiltered);
   };
 
-  // Filter products whenever category changes, search query changes, or new data arrives
+  // Filter products
   useEffect(() => {
     if (beautyItems.length > 0) {
       const beautyOnly = beautyItems.filter(item => 
@@ -100,14 +99,14 @@ const Beauty = () => {
 
       let filtered = beautyOnly;
       
-      // Apply search filter if search query exists
       if (searchQuery.trim()) {
         const searchTerm = searchQuery.trim().toLowerCase();
         filtered = filtered.filter(item =>
-          item.name.toLowerCase().includes(searchTerm)
-  )}
+          item.name.toLowerCase().includes(searchTerm) ||
+          item.subCategory.toLowerCase().includes(searchTerm)
+        );
+      }
       
-      // Apply category filter
       if (selectedCategory !== "All") {
         filtered = filtered.filter(item => 
           item.subCategory === selectedCategory
@@ -123,9 +122,11 @@ const Beauty = () => {
     mutationFn: wishlistsaveAPI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      toast.success("Added to wishlist");
     },
     onError: (error) => {
       console.error("Error adding to wishlist:", error);
+      toast.error("Failed to add to wishlist");
     }
   });
 
@@ -134,9 +135,11 @@ const Beauty = () => {
     mutationFn: wishlistdeleteAPI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      toast.success("Removed from wishlist");
     },
     onError: (error) => {
       console.error("Error removing from wishlist:", error);
+      toast.error("Failed to remove from wishlist");
     }
   });
 
@@ -153,7 +156,7 @@ const Beauty = () => {
   const handleChatClick = (vendorId, e) => {
     e.stopPropagation();
     e.preventDefault();
-    navigate(`/chat/${vendorId}/${userId}`);
+    navigate(`/collections/chat/${vendorId}/${userId}`);
   };
 
   const toggleWishlist = (productId, e) => {
@@ -161,14 +164,10 @@ const Beauty = () => {
     e.preventDefault();
     
     if (wishlist.includes(productId)) {
-      // Remove from wishlist
       removeFromWishlistMutation.mutate(productId);
-      // Optimistic update
       setWishlist(prev => prev.filter(id => id !== productId));
     } else {
-      // Add to wishlist
       addToWishlistMutation.mutate(productId);
-      // Optimistic update
       setWishlist(prev => [...prev, productId]);
     }
   };
@@ -183,19 +182,7 @@ const Beauty = () => {
         <Subtitle>Discover our curated collection of beauty products</Subtitle>
       </PageHeader>
 
-      <SearchAndFilterContainer>
-        <SearchForm onSubmit={handleSearch}>
-          <SearchInput
-            type="text"
-            placeholder="Search beauty products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <SearchButton type="submit">
-            <FaSearch />
-          </SearchButton>
-        </SearchForm>
-
+      <FilterContainer>
         <CategoryNav>
           {["All", "Moisturizer", "Serum", "Sunscreen", "Others"].map(category => (
             <CategoryButton 
@@ -207,7 +194,17 @@ const Beauty = () => {
             </CategoryButton>
           ))}
         </CategoryNav>
-      </SearchAndFilterContainer>
+
+        <SearchForm onSubmit={handleSearch}>
+          <SearchInput
+            type="text"
+            placeholder="Search by product name or subcategory..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <SearchTextButton type="submit">Search</SearchTextButton>
+        </SearchForm>
+      </FilterContainer>
 
       {filteredItems.length === 0 ? (
         <NoProductsMessage>
@@ -245,7 +242,7 @@ const Beauty = () => {
                   <VendorButton onClick={(e) => handleVendorDetails(item.vendor, e)}>
                     <FaUser /> Vendor
                   </VendorButton>
-                  <ChatButton onClick={(e) => handleChatClick(item.vendor.user, e)}>
+                  <ChatButton onClick={(e) => handleChatClick(item.vendor.user._id, e)}>
                     <FaComments /> Chat
                   </ChatButton>
                 </VendorActions>
@@ -263,8 +260,8 @@ const Beauty = () => {
               <FaStore /> Vendor Details
             </ModalHeader>
             <VendorInfo>
-              <p><FaUser /> <strong>Name:</strong> {showVendorDetails.name}</p>
-              <p><FaEnvelope /> <strong>Email:</strong> {showVendorDetails.email}</p>
+              <p><FaUser /> <strong>Business Name:</strong> {showVendorDetails.businessName || 'Not provided'}</p>
+              <p><FaEnvelope /> <strong>Email:</strong> {showVendorDetails.user?.email || 'Not provided'}</p>
               <p><FaPhone /> <strong>Phone:</strong> {showVendorDetails.phone || 'Not provided'}</p>
               <p><FaMapMarkerAlt /> <strong>Address:</strong> {showVendorDetails.address || 'Not provided'}</p>
               <p><FaStar /> <strong>Rating:</strong> {showVendorDetails.rating || 'Not rated yet'}</p>
@@ -276,7 +273,7 @@ const Beauty = () => {
   );
 };
 
-// Styled Components (updated with search functionality)
+// Styled Components
 const BeautyWrapper = styled.div`
   padding: 3rem 2rem;
   max-width: 1600px;
@@ -317,56 +314,15 @@ const Subtitle = styled.p`
   line-height: 1.6;
 `;
 
-const SearchAndFilterContainer = styled.div`
+const FilterContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
   margin-bottom: 3rem;
   padding: 1.5rem;
   background: white;
   border-radius: 16px;
   box-shadow: 0 8px 30px rgba(0,0,0,0.05);
-`;
-
-const SearchForm = styled.form`
-  display: flex;
-  width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
-  position: relative;
-`;
-
-const SearchInput = styled.input`
-  flex: 1;
-  padding: 1rem 1.5rem;
-  padding-right: 3.5rem;
-  border: 2px solid #e9ecef;
-  border-radius: 50px;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  
-  &:focus {
-    outline: none;
-    border-color: #ff6b6b;
-    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.2);
-  }
-`;
-
-const SearchButton = styled.button`
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #636e72;
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: color 0.3s ease;
-  
-  &:hover {
-    color: #ff6b6b;
-  }
 `;
 
 const CategoryNav = styled.div`
@@ -393,6 +349,47 @@ const CategoryButton = styled.button`
   &:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
+  }
+`;
+
+const SearchForm = styled.form`
+  display: flex;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  gap: 1rem;
+`;
+
+const SearchInput = styled.input`
+  flex: 1;
+  padding: 1rem 1.5rem;
+  border: 2px solid #e9ecef;
+  border-radius: 50px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: #ff6b6b;
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.2);
+  }
+`;
+
+const SearchTextButton = styled.button`
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    background: linear-gradient(135deg, #ff5252 0%, #ff7e47 100%);
   }
 `;
 

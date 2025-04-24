@@ -4,60 +4,63 @@ import orderImage from '../assets/order.jpg';
 import { ordercancelAPI, orderviewAPI } from '../services/orderServices';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { reviewaddAPI } from '../services/reviewServices';
-import axios from 'axios';
 
 const Order = () => {
-  const { data: orderData, isLoading, isError } = useQuery({
+  const { data: orderData, isLoading, isError, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: orderviewAPI
   });
 
-  const { mutateAsync } = useMutation({
+  const { mutateAsync: reviewMutateAsync } = useMutation({
     mutationKey: ['review'],
-    mutationFn: reviewaddAPI
+    mutationFn: reviewaddAPI,
+    onSuccess: () => {
+      alert('Review submitted successfully!');
+    },
+    onError: (error) => {
+      console.error('Error submitting review:', error);
+      alert('Failed to submit review. Please try again later.');
+    }
   });
 
-  // State for reviews (rating and text) for each product, ensuring defaults
-  const [productReviews, setProductReviews] = useState({});
+  const { mutate: cancelMutate } = useMutation({
+    mutationKey: ['cancel'],
+    mutationFn: ordercancelAPI,
+    onSuccess: () => {
+      alert(`Order ${selectedOrderId} cancelled successfully. Reason: ${cancelReason}`);
+      setCancelledOrders((prev) => [...prev, selectedOrderId]);
+      setShowCancelForm(false);
+      setCancelReason('');
+      refetch(); // Refetch orders to update status
+    },
+    onError: (error) => {
+      console.error('Error cancelling order:', error);
+      alert('Failed to cancel order. Please try again.');
+    }
+  });
 
+  // State for reviews (rating and text) for each product
+  const [productReviews, setProductReviews] = useState({});
   // State for cancellation form
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  // Track cancelled orders locally
   const [cancelledOrders, setCancelledOrders] = useState([]);
-  
-  const cancelMutation= useMutation({
-    mutationKey: ['cancel'],
-    mutationFn: ordercancelAPI
-  });
+
   const handleCancelClick = (orderId) => {
     setSelectedOrderId(orderId);
     setShowCancelForm(true);
   };
 
-  const handleCancelSubmit = async () => {
+  const handleCancelSubmit = () => {
     if (!cancelReason) {
-      alert("Please provide a reason for cancellation.");
+      alert('Please provide a reason for cancellation.');
       return;
     }
 
-    try {
-      // Call the API to cancel the order
-      // Replace with your actual API call
-      // await cancelOrderAPI(selectedOrderId, cancelReason);
-      alert(`Order ${selectedOrderId} cancelled successfully. Reason: ${cancelReason}`);
-      await cancelMutation.mutate({orderId:selectedOrderId,reason:cancelReason})
-      setCancelledOrders((prev) => [...prev, selectedOrderId]);
-      setShowCancelForm(false);
-      setCancelReason('');
-    } catch (error) {
-      console.error("Error cancelling order:", error);
-      alert("Failed to cancel order. Please try again.");
-    }
+    cancelMutate({ orderId: selectedOrderId, reason: cancelReason });
   };
-
-  if (isLoading) return <div>Loading orders...</div>;
-  if (isError) return <div>Error loading orders</div>;
 
   const handleRatingClick = (productId, rate) => {
     setProductReviews((prevReviews) => ({
@@ -68,7 +71,7 @@ const Order = () => {
       }
     }));
   };
-  
+
   const handleReviewTextChange = (productId, event) => {
     setProductReviews((prevReviews) => ({
       ...prevReviews,
@@ -78,121 +81,108 @@ const Order = () => {
       }
     }));
   };
-  
+
   const handleSubmitReview = async (productId) => {
-    const review = productReviews[productId] || {};  // Fallback to empty object if undefined
+    const review = productReviews[productId] || {};
     const reviewData = {
       id: productId,
-      comment: review.reviewText || 'Nil',  // Default to empty string if reviewText is undefined
-      rating: review.rating || 0,  // Default to 0 if rating is undefined
+      comment: review.reviewText || 'No comment provided',
+      rating: review.rating || 0,
     };
-  
+
     try {
-      // Call the mutation to add the review
-      await mutateAsync(reviewData);
-      
-      alert(`Review Submitted! Product: ${productId}, Rating: ${review.rating}, Review: ${review.reviewText}`);
-      
-      // Optionally clear the review state after submitting
+      await reviewMutateAsync(reviewData);
+      // Clear the review state after submitting
       setProductReviews((prevReviews) => ({
         ...prevReviews,
-        [productId]: { rating: 0, reviewText: '' },  // Reset the review for this product
+        [productId]: { rating: 0, reviewText: '' }
       }));
     } catch (error) {
-      console.error("Error submitting review:", error);
-      alert('Failed to submit review. Please try again later.');
+      // Error handling is managed by the mutation's onError
     }
   };
+
+  if (isLoading) return <div>Loading orders...</div>;
+  if (isError) return <div>Error loading orders</div>;
 
   return (
     <div className="order-container">
       <h2 className="order-title">Order Details</h2>
 
-      {orderData?.orders?.map((order) => (
-        <div
-          key={order?._id}
-          className={`order-summary ${cancelledOrders.includes(order?._id) ? 'cancelled' : ''}`}
-        >
-          <p>
-            <strong>Order ID:</strong> {order?._id}
-          </p>
-          <p>
-            <strong>Date:</strong> {new Date(order?.date).toLocaleDateString()}
-          </p>
-          <p>
-            <strong>Status:</strong> {order?.status}
-          </p>
-          {(order.cancellationReason)&&( <p> <strong>Cancellation Reason:</strong> {order?.cancellationReason}</p>)}
-          <p>
-            <strong>Total Amount:</strong> ₹{order?.totalAmount?.toLocaleString()}
-          </p>
+      {orderData?.orders?.map((order) => {
+        const isCancelled = cancelledOrders.includes(order?._id) || order?.status?.toLowerCase() === 'cancelled';
 
-          <div className="order-items">
-            <h3>Items</h3>
-            {order?.items?.map((item) => (
-              <div key={item?._id} className="order-item">
-                <img src={item?.product?.images[0]} alt={item.name} className="item-image" />
-                <div className="item-details">
-                  <p>
-                    <strong>{item?.product?.name}</strong>
-                  </p>
-                  {item?.product?.size[0] && (
-                    <p>Size: {item?.product?.size[0]}</p>
-                  )}
-                  {item?.product?.volume[0] && (
-                    <p>Volume: {item?.product?.volume}</p>
-                  )}
-                  <p>Price: ₹{item?.product?.price}</p>
-                  <p>Quantity: {item?.quantity}</p>
-                </div>
+        return (
+          <div
+            key={order?._id}
+            className={`order-summary ${isCancelled ? 'cancelled' : ''}`}
+          >
+            <p><strong>Order ID:</strong> {order?._id}</p>
+            <p><strong>Date:</strong> {new Date(order?.date).toLocaleDateString()}</p>
+            <p><strong>Status:</strong> {order?.status}</p>
+            {order?.cancellationReason && (
+              <p><strong>Cancellation Reason:</strong> {order?.cancellationReason}</p>
+            )}
+            <p><strong>Total Amount:</strong> ₹{order?.totalAmount?.toLocaleString()}</p>
 
-                {/* Review Section for each product */}
-                <div className="review-section">
-                  <h4>Write a Review for {item?.product?.name}</h4>
-
-                  {/* Star Rating for this product */}
-                  <div className="rating-container">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span
-                        key={star}
-                        className={`star ${productReviews[item?.product?._id]?.rating >= star ? 'filled' : ''}`}
-                        onClick={() => handleRatingClick(item?.product?._id, star)}
-                      >
-                        ★
-                      </span>
-                    ))}
+            <div className="order-items">
+              <h3>Items</h3>
+              {order?.items?.map((item) => (
+                <div key={item?._id} className="order-item">
+                  <img src={item?.product?.images[0]} alt={item?.product?.name} className="item-image" />
+                  <div className="item-details">
+                    <p><strong>{item?.product?.name}</strong></p>
+                    {item?.product?.size?.[0] && <p>Size: {item?.product?.size[0]}</p>}
+                    {item?.product?.volume?.[0] && <p>Volume: {item?.product?.volume[0]}</p>}
+                    <p>Price: ₹{item?.product?.price?.toLocaleString()}</p>
+                    <p>Quantity: {item?.quantity}</p>
                   </div>
 
-                  {/* Textbox for Review */}
-                  <textarea
-                    className="review-text"
-                    placeholder="Write your review here..."
-                    value={productReviews[item?.product?._id]?.reviewText || ''}
-                    onChange={(e) => handleReviewTextChange(item?.product?._id, e)}
-                  ></textarea>
-
-                  <button
-                    className="btn submit-btn"
-                    onClick={() => handleSubmitReview(item?.product?._id)}
-                  >
-                    Submit Review
-                  </button>
+                  {/* Review Section (Hidden for Cancelled Orders) */}
+                  {!isCancelled && (
+                    <div className="review-section">
+                      <h4>Write a Review for {item?.product?.name}</h4>
+                      <div className="rating-container">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className={`star ${productReviews[item?.product?._id]?.rating >= star ? 'filled' : ''}`}
+                            onClick={() => handleRatingClick(item?.product?._id, star)}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <textarea
+                        className="review-text"
+                        placeholder="Write your review here..."
+                        value={productReviews[item?.product?._id]?.reviewText || ''}
+                        onChange={(e) => handleReviewTextChange(item?.product?._id, e)}
+                      />
+                      <button
+                        className="btn submit-btn"
+                        onClick={() => handleSubmitReview(item?.product?._id)}
+                      >
+                        Submit Review
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Cancel Button */}
-          {!cancelledOrders.includes(order?._id) && (
-            <button
-              className="cancel-button"
-              onClick={() => handleCancelClick(order?._id)}
-            >
-              Cancel Order
-            </button>
-          )}
-        </div>
-      ))}
+            {/* Cancel Button (Hidden for Cancelled Orders) */}
+            {!isCancelled && (
+              <button
+                className="cancel-button"
+                onClick={() => handleCancelClick(order?._id)}
+              >
+                Cancel Order
+              </button>
+            )}
+          </div>
+        );
+      })}
 
       {/* Cancellation Form */}
       {showCancelForm && (
@@ -202,17 +192,17 @@ const Order = () => {
             placeholder="Enter reason for cancellation..."
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-          ></textarea>
+          />
           <button onClick={handleCancelSubmit}>Submit</button>
           <button onClick={() => setShowCancelForm(false)}>Close</button>
         </CancelForm>
       )}
 
-      {/* CSS Styles for the Order Page */}
+      {/* CSS Styles for the Order Page (Unchanged) */}
       <style jsx>{`
         .order-container {
           padding: 20px;
-          background-image: url(${orderImage});
+          // background-image: url(${orderImage});
           background-size: cover;
           background-position: center;
           background-attachment: fixed;
@@ -221,7 +211,7 @@ const Order = () => {
           display: flex;
           flex-direction: column;
           align-items: center;
-          color: white;
+          color: orange;
         }
 
         .order-title {
@@ -396,7 +386,7 @@ const Order = () => {
   );
 };
 
-// Styled Components
+// Styled Components (Unchanged)
 const CancelForm = styled.div`
   position: fixed;
   top: 50%;

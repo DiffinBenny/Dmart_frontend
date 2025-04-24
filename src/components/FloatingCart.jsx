@@ -128,7 +128,7 @@ const FloatingCart = ({ className }) => {
               <span>Total:</span>
               <strong>{formatPrice(cartData.totalAmount)}</strong>
             </CartTotal>
-            <CheckoutButton to="/checkout">
+            <CheckoutButton to="/collections/checkout">
               Proceed to Checkout
             </CheckoutButton>
           </>

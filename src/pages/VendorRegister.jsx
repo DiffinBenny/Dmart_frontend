@@ -24,10 +24,20 @@ const VendorRegister = () => {
       .min(3, "Username must be at least 3 characters")
       .required("Username is required"),
     email: Yup.string()
-      .email("Invalid email")
-      .required("Email is required"),
+    .email("Invalid email")
+    .test(
+      "is-gmail",
+      "Only Gmail addresses are allowed (@gmail.com)",
+      (value) => {
+        if (!value) return false;
+        return value.endsWith("@gmail.com");
+      }
+    )
+    .required("Email is required"),
     password: Yup.string()
       .min(6, "Password must be at least 6 characters")
+      .matches(/[a-z]/, "Password must contain at least one lowercase letter")
+    .matches(/[A-Z]/, "Password must contain at least one uppercase letter")
       .required("Password is required"),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref("password"), null], "Passwords must match")
@@ -60,7 +70,7 @@ const VendorRegister = () => {
         //     setSuccessMessage("Invalid response from server");
         // }
           resetForm();
-          navigate("/vendorhome");
+          navigate("/login");
       } catch (error) {
         console.error("Signup Error:", error.response ? error.response.data : error.message);
         alert(error.response?.data?.message || "An error occurred during registration. Please try again.");
@@ -167,23 +177,26 @@ const PageWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url("/src/assets/login2.jpg.webp") no-repeat center center fixed;
+  background: url("/src/assets/A.jpg") no-repeat center center fixed;
   background-size: cover;
 `;
-
 const RegisterWrapper = styled.div`
   max-width: 600px;
   margin: 2rem;
   padding: 3rem;
-  border: 1px solid hsl(var(--divider));
+  border: 1px solid hsla(0, 0%, 100%, 0.3);
   border-radius: 1rem;
-  background: hsla(0, 0%, 100%, 0.9);
+  background: hsla(0, 0%, 100%, 0.2); /* More transparent background */
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px); /* Adds a blur effect to the background */
+  color: #fff; /* White text for better contrast */
 
   h1 {
     text-align: center;
     margin-bottom: 2.5rem;
     font-size: 3rem;
+    color: #fff; /* White text */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Text shadow for readability */
   }
 
   .form-group {
@@ -193,18 +206,27 @@ const RegisterWrapper = styled.div`
       display: block;
       margin-bottom: 1rem;
       font-size: 1.5rem;
+      color: #fff; /* White text */
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Text shadow for readability */
     }
 
     input {
       width: 100%;
       padding: 1.25rem;
-      border: 1px solid hsl(var(--divider));
+      border: 1px solid hsla(0, 0%, 100%, 0.3);
       border-radius: 0.5rem;
       font-size: 1.5rem;
       outline: none;
+      background: hsla(0, 0%, 100%, 0.2); /* Transparent input background */
+      color: #fff; /* White text */
+
+      &::placeholder {
+        color: hsla(0, 0%, 100%, 0.7); /* Semi-transparent placeholder */
+      }
 
       &:focus {
         border-color: hsl(var(--orange));
+        background: hsla(0, 0%, 100%, 0.3); /* Slightly less transparent when focused */
       }
     }
   }
@@ -234,10 +256,13 @@ const RegisterWrapper = styled.div`
     text-align: center;
     margin-top: 2.5rem;
     font-size: 1.5rem;
+    color: #fff; /* White text */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Text shadow for readability */
 
     a {
       color: hsl(var(--orange));
       text-decoration: none;
+      text-shadow: none;
 
       &:hover {
         text-decoration: underline;
@@ -247,10 +272,10 @@ const RegisterWrapper = styled.div`
 `;
 
 const ErrorMessage = styled.p`
-  color: red;
+  color: #ff6b6b; /* Brighter red for better visibility */
   font-size: 1.25rem;
   margin-bottom: 1.5rem;
   text-align: center;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Text shadow for readability */
 `;
-
 export default VendorRegister;

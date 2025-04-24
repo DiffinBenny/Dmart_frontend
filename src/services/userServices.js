@@ -48,7 +48,19 @@ export const viewAPI= async()=>{
     })
     return response.data
 }
-
+export const forgotAPI=async(data)=>{
+    const response=await axios.post(`${BASE_URL}/users/forgot`,data, {
+    withCredentials: true, 
+    })
+    return response.data
+    }
+export const resetAPI=async(data)=>{
+    const response=await axios.post(`${BASE_URL}/users/reset`,data, {
+    withCredentials: true, 
+    })
+    return response.data
+    }
+    
 export const uploadProfilePicAPI = async (formData) => {
     const token = getToken();
     const response = await axios.post(`${BASE_URL}/users/upload-profile-pic`, formData, {

@@ -88,7 +88,7 @@ const queryClient=useQueryClient()
     showAlert("Item added to cart successfully!");
   };
 
-  const handleBuyNow = () => {
+  const   handleBuyNow = async() => {
     if (quantity > product.stock) {
       showAlert(`Only ${product.stock} items available in stock`);
       return;
@@ -99,27 +99,27 @@ const queryClient=useQueryClient()
       return;
     }
 
-    // Create a direct checkout item
-    const checkoutItem = {
-      items: [{
-        product: {
-          _id: product._id,
-          name: product.name,
-          price: product.price,
-          category: product.category,
-          images: product.images,
-          size: product.size,
-        },
-        quantity: quantity
-      }],
-      totalAmount: product.price * quantity
+    const cartItem = {
+      productId: product._id,
+      productName: product.name,
+      productPrice: product.price,
+      isOnSale: product.discount > 0,
+      salePercent: (100 - product.discount) / 100,
+      amount: quantity,
+      images: product.images?.map(url => ({ url, alt: product.name })) || []
     };
-
-    // Store the checkout item in localStorage
-    localStorage.setItem('directCheckout', JSON.stringify(checkoutItem));
-    
+    addToCart(cartItem);
+     await mutateAsync(
+      { id: product._id, quantity: quantity },
+      {
+        onSuccess: () => {
+          // Invalidate and refetch any queries that might be affected
+          queryClient.invalidateQueries('cart'); // Adjust query key as needed
+        }
+      }
+    );
     // Navigate to checkout
-    navigate('/checkout');
+    navigate('/collections/checkout');
   };
 
   if (isLoading) return <LoadingWrapper>Loading...</LoadingWrapper>;
@@ -155,7 +155,7 @@ const queryClient=useQueryClient()
       </ImageSection>
 
       <ProductInfo>
-        <VendorName>{product.vendor?.name || 'Unknown Vendor'}</VendorName>
+        <VendorName>{product.vendor?.businessName || 'Unknown Vendor'}</VendorName>
         <ProductName>{product.name}</ProductName>
         <CategoryTag>{product.category} - {product.subCategory}</CategoryTag>
         
