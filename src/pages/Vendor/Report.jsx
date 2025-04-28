@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import styled from "styled-components";
 import { useQuery } from "@tanstack/react-query";
 import { Line, Bar, Doughnut } from "react-chartjs-2";
-import axios from "axios";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -18,7 +17,8 @@ import {
 import backgroundImage from "../../assets/e1.jpg";
 import { orderviewallAPI } from "../../services/orderServices";
 import { productviewAPI, stockviewAPI } from "../../services/productServices";
-
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { Chart } from 'chart.js';
 // Register ChartJS components
 ChartJS.register(
   CategoryScale,
@@ -27,10 +27,12 @@ ChartJS.register(
   LineElement,
   BarElement,
   ArcElement,
+  ChartDataLabels,
   Title,
   Tooltip,
   Legend
 );
+
 
 const Report = () => {
   const [dateRange, setDateRange] = useState("week"); // week, month, year
@@ -52,9 +54,36 @@ const Report = () => {
     queryFn: productviewAPI
   });
 
+  // Filter orders based on date range
+  const filteredOrders = useMemo(() => {
+    if (!orders) return [];
+    
+    const now = new Date();
+    let startDate = new Date();
+    
+    switch (dateRange) {
+      case "week":
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case "month":
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case "year":
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 7);
+    }
+    
+    return orders.filter(order => {
+      const orderDate = new Date(order.date);
+      return orderDate >= startDate;
+    });
+  }, [orders, dateRange]);
+
   // Process data for charts and stats
   const processedData = useMemo(() => {
-    if (!orders || orders.length === 0) {
+    if (!filteredOrders || filteredOrders.length === 0) {
       return {
         totalSales: 0,
         totalOrders: 0,
@@ -68,24 +97,49 @@ const Report = () => {
     }
 
     // Calculate totals
-    const totalSales = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-    const totalOrders = orders.length;
+    const totalSales = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const totalOrders = filteredOrders.length;
     const avgOrderValue = totalSales / totalOrders;
-    const productsSold = orders.reduce((sum, order) => sum + order.items.length, 0);
+    const productsSold = filteredOrders.reduce((sum, order) => sum + order.items.length, 0);
 
-    // Group by day for sales chart
-    const salesByDay = orders.reduce((acc, order) => {
-      const date = new Date(order.date).toLocaleDateString();
-      acc[date] = (acc[date] || 0) + order.totalAmount;
+    // Group by day/week/month for sales chart based on date range
+    const salesByDate = filteredOrders.reduce((acc, order) => {
+      let dateKey;
+      const orderDate = new Date(order.date);
+      
+      if (dateRange === "week") {
+        // Group by day
+        dateKey = orderDate.toLocaleDateString();
+      } else if (dateRange === "month") {
+        // Group by week
+        const weekNum = Math.floor(orderDate.getDate() / 7) + 1;
+        dateKey = `Week ${weekNum}`;
+      } else {
+        // Group by month for year
+        dateKey = orderDate.toLocaleString('default', { month: 'short' });
+      }
+      
+      acc[dateKey] = (acc[dateKey] || 0) + order.totalAmount;
       return acc;
     }, {});
 
-    const salesLabels = Object.keys(salesByDay).sort();
-    const salesValues = salesLabels.map(date => salesByDay[date]);
+    const salesLabels = Object.keys(salesByDate).sort((a, b) => {
+      if (dateRange === "week") {
+        return new Date(a) - new Date(b);
+      } else if (dateRange === "month") {
+        return parseInt(a.replace('Week ', '')) - parseInt(b.replace('Week ', ''));
+      } else {
+        // For year, sort by month index
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return months.indexOf(a) - months.indexOf(b);
+      }
+    });
+    
+    const salesValues = salesLabels.map(date => salesByDate[date]);
 
     // Group by category
     const categoryCount = {};
-    orders.forEach(order => {
+    filteredOrders.forEach(order => {
       order?.items?.forEach(item => {
         const category = item.product?.category || 'Unknown';
         categoryCount[category] = (categoryCount[category] || 0) + 1;
@@ -96,7 +150,7 @@ const Report = () => {
     const categoryValues = Object.values(categoryCount);
 
     // Group by status
-    const statusCount = orders.reduce((acc, order) => {
+    const statusCount = filteredOrders.reduce((acc, order) => {
       acc[order.status] = (acc[order.status] || 0) + 1;
       return acc;
     }, {});
@@ -105,7 +159,7 @@ const Report = () => {
     const statusValues = Object.values(statusCount);
 
     // Get recent orders (last 5)
-    const recentOrders = [...orders]
+    const recentOrders = [...filteredOrders]
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 5);
 
@@ -158,22 +212,7 @@ const Report = () => {
       },
       recentOrders
     };
-  }, [orders]);
-
-  // Process stock data
-  // const stockData = useMemo(() => {
-  //   if (!products || products.length === 0) {
-  //     return [];
-  //   }
-
-  //   return products.map(product => ({
-  //     productId: product._id,
-  //     productName: product.name,
-  //     currentStock: product.stock || 0,
-  //     stockAdded: 0, // This could be enhanced with actual stock addition history if available
-  //     totalStock: product.stock || 0
-  //   }));
-  // }, [products]);
+  }, [filteredOrders, dateRange]);
 
   if (isLoadingOrders || isLoadingProducts) return <div>Loading...</div>;
   if (isErrorOrders) return <div>Error: {ordersError.message}</div>;
@@ -209,22 +248,34 @@ const Report = () => {
         <StatCard>
           <h3>Total Sales</h3>
           <p>₹{processedData.totalSales.toLocaleString()}</p>
-          <span className="trend positive">↑ 15%</span>
+          <TrendText>
+            {dateRange === "week" ? "vs last week" : 
+             dateRange === "month" ? "vs last month" : "vs last year"}
+          </TrendText>
         </StatCard>
         <StatCard>
           <h3>Total Orders</h3>
           <p>{processedData.totalOrders}</p>
-          <span className="trend positive">↑ 8%</span>
+          <TrendText>
+            {dateRange === "week" ? "vs last week" : 
+             dateRange === "month" ? "vs last month" : "vs last year"}
+          </TrendText>
         </StatCard>
         <StatCard>
           <h3>Average Order Value</h3>
           <p>₹{processedData.avgOrderValue.toFixed(2)}</p>
-          <span className="trend positive">↑ 5%</span>
+          <TrendText>
+            {dateRange === "week" ? "vs last week" : 
+             dateRange === "month" ? "vs last month" : "vs last year"}
+          </TrendText>
         </StatCard>
         <StatCard>
           <h3>Products Sold</h3>
           <p>{processedData.productsSold}</p>
-          <span className="trend negative">↓ 3%</span>
+          <TrendText>
+            {dateRange === "week" ? "vs last week" : 
+             dateRange === "month" ? "vs last month" : "vs last year"}
+          </TrendText>
         </StatCard>
       </StatsGrid>
 
@@ -232,18 +283,22 @@ const Report = () => {
         <ChartCard>
           <h2>Sales Overview</h2>
           {processedData.salesData.labels.length > 0 ? (
-            <Line data={processedData.salesData} options={{
-              responsive: true,
-              plugins: {
-                legend: {
-                  position: 'top',
-                },
-                title: {
-                  display: true,
-                  text: 'Daily Sales'
+            <Line 
+              data={processedData.salesData} 
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                  },
+                  title: {
+                    display: true,
+                    text: dateRange === "week" ? 'Daily Sales' : 
+                          dateRange === "month" ? 'Weekly Sales' : 'Monthly Sales'
+                  }
                 }
-              }
-            }} />
+              }} 
+            />
           ) : (
             <p>No sales data available</p>
           )}
@@ -252,34 +307,61 @@ const Report = () => {
         <ChartCard>
           <h2>Category Distribution</h2>
           {processedData.categoryData.labels.length > 0 ? (
-            <Doughnut data={processedData.categoryData} options={{
-              responsive: true,
-              plugins: {
-                legend: {
-                  position: 'right',
-                }
-              }
-            }} />
+            <Doughnut 
+              data={processedData.categoryData} 
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                  },
+                  title: {
+                    display: true,
+                    text: `Status for ${dateRange}ly orders`,
+                  },
+                  datalabels: {
+                    anchor: 'end',
+                    align: 'top',
+                    formatter: (value, context) => {
+                      const dataset = context.dataset.data;
+                      const total = dataset.reduce((sum, val) => sum + val, 0);
+                      const percentage = ((value / total) * 100).toFixed(1);
+                      return `${percentage}%`;
+                    },
+                    font: {
+                      weight: 'bold',
+                    },
+                  },
+                },
+              }}
+            />
           ) : (
             <p>No category data available</p>
           )}
         </ChartCard>
 
         <ChartCard wide>
-          <h2>Order Status</h2>
-          {processedData.orderStatusData.labels.length > 0 ? (
-            <Bar data={processedData.orderStatusData} options={{
-              responsive: true,
-              plugins: {
-                legend: {
-                  position: 'top',
+  <h2>Order Status</h2>
+  {processedData.orderStatusData.labels.length > 0 ? (
+    <Bar
+    data={processedData.orderStatusData} 
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'top',
+                  },
+                  title: {
+                    display: true,
+                    text: `Status for ${dateRange}ly orders`
+                  }
                 }
-              }
-            }} />
-          ) : (
-            <p>No order status data available</p>
-          )}
-        </ChartCard>
+              }}
+    />
+  ) : (
+    <p>No order status data available</p>
+  )}
+</ChartCard>
       </ChartGrid>
 
       <Section>
@@ -330,7 +412,7 @@ const Report = () => {
             </tr>
           </thead>
           <tbody>
-            {stockData.length > 0 ? (
+            {stockData && stockData.length > 0 ? (
               stockData.map(product => (
                 <tr key={product.productId}>
                   <td>#{product.productId.slice(-6)}</td>
@@ -343,7 +425,7 @@ const Report = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="5">No stock data available</td>
+                <td colSpan="6">No stock data available</td>
               </tr>
             )}
           </tbody>
@@ -353,6 +435,7 @@ const Report = () => {
   );
 };
 
+// Styled Components
 const ReportContainer = styled.div`
   padding: 2rem;
   min-height: 100vh;
@@ -372,26 +455,33 @@ const Header = styled.header`
   h1 {
     font-size: 2.5rem;
     margin: 0;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   }
 `;
 
 const DateFilter = styled.div`
   display: flex;
   gap: 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem;
+  border-radius: 8px;
+  backdrop-filter: blur(5px);
 `;
 
 const Button = styled.button`
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  background-color: ${props => props.active ? '#007bff' : 'rgba(255, 255, 255, 0.1)'};
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  background-color: ${props => props.active ? '#4a6bff' : 'transparent'};
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-weight: ${props => props.active ? 'bold' : 'normal'};
 
   &:hover {
-    background-color: #007bff;
+    background-color: ${props => props.active ? '#4a6bff' : 'rgba(255, 255, 255, 0.1)'};
   }
 `;
 
@@ -408,6 +498,7 @@ const StatCard = styled.div`
   padding: 1.5rem;
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 
   h3 {
     margin: 0;
@@ -419,13 +510,13 @@ const StatCard = styled.div`
     margin: 0.5rem 0;
     font-size: 2rem;
     font-weight: bold;
+    color: white;
   }
+`;
 
-  .trend {
-    font-size: 0.9rem;
-    &.positive { color: #4caf50; }
-    &.negative { color: #f44336; }
-  }
+const TrendText = styled.span`
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
 `;
 
 const ChartGrid = styled.div`
@@ -459,10 +550,12 @@ const Section = styled.section`
   padding: 1.5rem;
   border-radius: 10px;
   margin-bottom: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 
   h2 {
     margin: 0 0 1rem 0;
     font-size: 1.5rem;
+    color: white;
   }
 `;
 

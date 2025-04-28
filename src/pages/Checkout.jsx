@@ -145,7 +145,11 @@ const Checkout = () => {
         navigate(`/collections/payment/${orderId}`);
       } else {
         alert('Order placed successfully! Your order will be delivered in 7 days.');
-        navigate('/collections/collectionshome');
+        navigate('/collections/collectionshome', { replace: true });
+        // Optionally, force a full reload after navigation
+        setTimeout(() => {
+          window.location.reload();
+        }, 0);
       }
     } catch (error) {
       alert('Failed to place order. Please try again.');

@@ -21,8 +21,9 @@ const UserProfile = () => {
   const { data: profileData, refetch: refetchProfile } = useQuery({
     queryKey: ['viewAPI'],
     queryFn: viewAPI,
-    retry: 1
+    retry: 1,
   });
+  
 
   const profileMutation = useMutation({
     mutationKey: ['editAPI'],
@@ -35,16 +36,16 @@ const UserProfile = () => {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: uploadProfilePicAPI,
-    onSuccess: (data) => {
-      refetchProfile(); // Refresh profile data after successful upload
-      setPreviewUrl(null); // Clear preview
-    },
-    onError: (error) => {
-      console.error('Upload failed:', error);
-      alert('Failed to upload profile picture. Please try again.');
-    }
-  });
+      mutationFn: uploadProfilePicAPI,
+      onSuccess: (data) => {
+        // Update the profile picture in the UI
+        setPreviewUrl(data.imageUrl);
+      },
+      onError: (error) => {
+        console.error('Upload failed:', error);
+        alert('Failed to upload profile picture. Please try again.');
+      }
+    });
 
   useEffect(() => {
     if (profileData) {
@@ -163,7 +164,7 @@ const UserProfile = () => {
                 <input
                   type="email"
                   name="email"
-                  value={vendorData.email}
+                  value={vendorData?.email}
                   onChange={handleInputChange}
                   className="edit-input"
                 />
@@ -173,7 +174,7 @@ const UserProfile = () => {
                 <input
                   type="text"
                   name="phone"
-                  value={vendorData.phone}
+                  value={vendorData?.phone}
                   onChange={handleInputChange}
                   className="edit-input"
                 />
@@ -183,7 +184,7 @@ const UserProfile = () => {
                 <input
                   type="text"
                   name="address"
-                  value={vendorData.address}
+                  value={vendorData?.address}
                   onChange={handleInputChange}
                   className="edit-input"
                 />
@@ -564,4 +565,4 @@ const ProfileWrapper = styled.div`
   }
 `;
 
-export default UserProfile;
+export default UserProfile;

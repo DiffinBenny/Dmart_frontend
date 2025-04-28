@@ -47,7 +47,11 @@ console.log(orders)
       // Clear localStorage
       localStorage.removeItem("shippingDetails");
       // Redirect to home page
-      navigate("/collections/collectionshome");
+      navigate("/collections/collectionshome", { replace: true });
+      // Optionally, force a full reload after navigation
+      setTimeout(() => {
+        window.location.reload();
+      }, 0);
     },
     onError: (error) => {
       console.error("Payment error:", error);

@@ -4,6 +4,7 @@ import { getToken } from "../utils/storageHandler";
 const token = getToken()
 
 export const orderaddAPI = async (data) => {
+    const token = getToken()
     const response = await axios.post(`${BASE_URL}/order/add`, data, {
         headers: {
             Authorization: `Bearer ${token}`,

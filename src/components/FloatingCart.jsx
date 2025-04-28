@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cartgetAPI, cartdeleteAPI } from "../services/cartServices";
 
 const FloatingCart = ({ className }) => {
-  const { state, removeFromCart } = useGlobalContext();
+  const { state, removeFromCart,hideCart } = useGlobalContext();
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
   const [isError, setIsError] = useState(false);
@@ -128,9 +128,12 @@ const FloatingCart = ({ className }) => {
               <span>Total:</span>
               <strong>{formatPrice(cartData.totalAmount)}</strong>
             </CartTotal>
-            <CheckoutButton to="/collections/checkout">
-              Proceed to Checkout
-            </CheckoutButton>
+            <CheckoutButton 
+  to="/collections/checkout" 
+  onClick={() => hideCart()}
+>
+  Proceed to Checkout
+</CheckoutButton>
           </>
         )}
       </CartContent>

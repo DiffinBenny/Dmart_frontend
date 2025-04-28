@@ -374,6 +374,7 @@ console.log(users);
     queryKey: ["feedback"],
     queryFn: getAllComplaintsAPI,
   });
+console.log(complaints);
 
   // Fetch report data
   const {
@@ -385,7 +386,7 @@ console.log(users);
     queryFn: adminviewallAPI,
   });
 
-  const sum = report?.orders.reduce((accumulator, order) => accumulator + order.totalAmount, 0);
+  const sum = report?.orders?.reduce((accumulator, order) => accumulator + order.totalAmount, 0);
 
   // Mutation for verifying/rejecting users
   const { mutateAsync, isLoading: isMutationLoading } = useMutation({
@@ -662,7 +663,7 @@ console.log(users);
                 <tr>
                   <th>Subject</th>
                   <th>Description</th>
-                  <th>Status</th>
+                  <th>User </th>
                   <th>Created At</th>
                   <th>Business Name</th>
                   <th>Action</th>
@@ -673,7 +674,7 @@ console.log(users);
                   <tr key={index}>
                     <td>{complaint.subject}</td>
                     <td>{complaint.description}</td>
-                    <td>{complaint.status}</td>
+                    <td>{complaint?.user?.username}</td>
                     <td>{new Date(complaint.createdAt).toLocaleDateString()}</td>
                     <td>{complaint?.vendor?.businessName}</td>
                     <td>

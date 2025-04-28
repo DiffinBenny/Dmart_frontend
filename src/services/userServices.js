@@ -41,6 +41,7 @@ export const logoutAPI= async(data)=>{
     return response.data
 }
 export const viewAPI= async()=>{
+    const token = getToken()
     const response = await axios.get(`${BASE_URL}/users/view`,{
         headers:{
             Authorization: `Bearer ${token}`
