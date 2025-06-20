@@ -21,8 +21,8 @@ const LogoImage = styled.img`
 const Logo = () => {
   return (
     <LogoWrapper>
-      <LogoImage src={logoImage} alt="B-Mart Logo" />
-      E-Mart
+      <LogoImage src={logoImage} alt="D-Mart Logo" />
+      D-Mart
     </LogoWrapper>
   );
 };

@@ -470,7 +470,7 @@ console.log(complaints);
     <Container>
       {/* Sidebar */}
       <Sidebar>
-        <SidebarTitle>E-mart</SidebarTitle>
+        <SidebarTitle>D-mart</SidebarTitle>
         <SidebarNav>
           <ul>
             {menuItems.map((item, index) => (

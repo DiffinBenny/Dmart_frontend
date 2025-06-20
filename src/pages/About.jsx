@@ -73,7 +73,7 @@ const About = () => {
           <AboutHeading>About Us</AboutHeading>
           <AboutDescription>
           Your Trusted Multi-Vendor Marketplace!
-          Welcome to D-mart, a next-generation multi-vendor e-commerce platform that connects vendors with customers for a seamless shopping experience. Our platform enables businesses to list, manage, and sell their products effortlessly while providing customers with a diverse selection, secure payments, and real-time order tracking. With a user-friendly interface, vendor management tools, and trusted payment gateways, we ensure a smooth and secure online shopping journey. Join us today and explore a smarter way to shop and sell online!
+          Welcome to E-Mart, a next-generation multi-vendor e-commerce platform that connects vendors with customers for a seamless shopping experience. Our platform enables businesses to list, manage, and sell their products effortlessly while providing customers with a diverse selection, secure payments, and real-time order tracking. With a user-friendly interface, vendor management tools, and trusted payment gateways, we ensure a smooth and secure online shopping journey. Join us today and explore a smarter way to shop and sell online!
           </AboutDescription>
         </AboutText>
       </AboutContent>
@@ -84,7 +84,7 @@ const About = () => {
           <BoxIcon>🌟</BoxIcon>
           <BoxTitle>Who We Are</BoxTitle>
           <BoxText>
-            Welcome to <Highlight>D-Mart</Highlight>, a cutting-edge multi-vendor
+            Welcome to <Highlight>E-Mart</Highlight>, a cutting-edge multi-vendor
             e-commerce platform designed to bring together vendors and customers
             for a seamless online shopping experience. Our platform empowers
             businesses of all sizes to showcase their products while providing
@@ -108,7 +108,7 @@ const About = () => {
           <BoxIcon>🛍️</BoxIcon>
           <BoxTitle>What We Offer</BoxTitle>
           <BoxText>
-            At <Highlight>D-Mart</Highlight>, we offer a diverse range of
+            At <Highlight>E-Mart</Highlight>, we offer a diverse range of
             products from multiple vendors, ensuring that customers have access
             to the best selection. From electronics to fashion, home goods to
             groceries, we provide a one-stop solution for all your shopping
@@ -123,7 +123,7 @@ const About = () => {
             We stand out because of our commitment to quality, customer
             satisfaction, and vendor empowerment. With secure transactions,
             reliable delivery, and exceptional customer support,{" "}
-            <Highlight>D-Mart</Highlight> is your trusted partner in online
+            <Highlight>E-Mart</Highlight> is your trusted partner in online
             shopping.
           </BoxText>
         </Box>

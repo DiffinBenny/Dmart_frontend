@@ -22,7 +22,7 @@ const Footer = () => {
             <li>About E-mart</li>
             <li>Careers</li>
             <li>Press Releases</li>
-            <li>Amazon Science</li>
+            <li>E-Mart Science</li>
           </ul>
         </div>
 
@@ -40,7 +40,7 @@ const Footer = () => {
         <div className="footer-section">
           <h3>Make Money with Us</h3>
           <ul>
-            <li>Sell on Amazon</li>
+            <li>Sell on E-Mart</li>
             <li>Sell under E-mart Accelerator</li>
             <li>Protect and Build Your Brand</li>
             <li>E-mart Selling</li>

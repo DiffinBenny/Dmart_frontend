@@ -17,7 +17,7 @@ const Home = () => {
   return (
     <HomeWrapper>
       <section className="hero">
-        <h1>Welcome to E-Mart</h1>
+        <h1>Welcome to D-Mart</h1>
         <p>Explore our latest products and collections.</p>
         <button onClick={goToAboutPage} className="about-button">
           Learn More About Us
